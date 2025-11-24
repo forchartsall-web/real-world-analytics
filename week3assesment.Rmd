@@ -1,0 +1,478 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code.
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*.
+
+```{r}
+the.data <- as.matrix(read.table("ENB.txt"))  
+```
+
+
+```{r}
+set.seed(226156731)
+```
+
+
+```{r}
+num_row<-650
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+```{r}
+```
+#read a random sample of 650 rows from the data
+```{r}
+my.data <- the.data[sample(1:nrow(the.data),num_row), 2:7]
+head(my.data)
+```
+```{r}
+colnames(my.data)<- c("X1","X2","X3","X4","X5","Y")
+head(my.data)
+```
+
+
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+# Scatter plots of X1–X5 vs Y with regression lines
+```{r}
+# Choose the source matrix
+src <- my.data  # or use the.data
+
+# If there is a leading index column, drop it
+if (ncol(src) == 7) src <- src[, 2:7, drop = FALSE]
+
+# Ensure column names exist; assign if needed
+if (is.null(colnames(src)) || !all(colnames(src) %in% c("X1","X2","X3","X4","X5","Y"))) {
+  colnames(src) <- c("X1","X2","X3","X4","X5","Y")
+}
+
+# Set a 2x3 layout for five plots
+op <- par(mfrow = c(2, 3), mar = c(4, 4, 2, 1))
+
+plot(src[,"X1"], src[,"Y"], xlab = "X1: Living room temp (°C)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X1 vs Y")
+abline(lm(Y ~ X1, data = as.data.frame(src)), col = "red", lwd = 2)
+
+plot(src[,"X2"], src[,"Y"], xlab = "X2: Living room humidity (%)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X2 vs Y")
+abline(lm(Y ~ X2, data = as.data.frame(src)), col = "red", lwd = 2)
+
+plot(src[,"X3"], src[,"Y"], xlab = "X3: Office temp (°C)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X3 vs Y")
+abline(lm(Y ~ X3, data = as.data.frame(src)), col = "red", lwd = 2)
+
+plot(src[,"X4"], src[,"Y"], xlab = "X4: Office humidity (%)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X4 vs Y")
+abline(lm(Y ~ X4, data = as.data.frame(src)), col = "red", lwd = 2)
+
+plot(src[,"X5"], src[,"Y"], xlab = "X5: Pressure (mmHg)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X5 vs Y")
+abline(lm(Y ~ X5, data = as.data.frame(src)), col = "red", lwd = 2)
+
+par(op)
+
+```
+```{r}
+# install.packages("ggplot2") # if needed
+library(ggplot2)
+src <- my.data   
+if (ncol(src) == 7) src <- src[, 2:7, drop = FALSE]
+colnames(src) <- c("X1","X2","X3","X4","X5","Y")
+
+df <- as.data.frame(src)
+long <- reshape(
+  df,
+  varying = list(names(df)[1:5]),
+  v.names = "X",
+  timevar = "Feature",
+  times = names(df)[1:5],
+  direction = "long"
+)
+
+ggplot(long, aes(x = X, y = Y)) +
+  geom_point(alpha = 0.4, color = "steelblue") +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  facet_wrap(~ Feature, scales = "free_x") +
+  labs(x = "Feature value", y = "Y: Appliances (Wh)", title = "Scatter plots: X1–X5 vs Y") +
+  theme_minimal(base_size = 12)
+```
+```{r}
+library(ggplot2)
+
+src <- my.data  # or the.data
+if (ncol(src) == 7) src <- src[, 2:7, drop = FALSE]
+colnames(src) <- c("X1","X2","X3","X4","X5","Y")
+
+df <- as.data.frame(src)
+long <- reshape(
+  df,
+  varying = list(names(df)[1:5]),
+  v.names = "X",
+  timevar = "Feature",
+  times = names(df)[1:5],
+  direction = "long"
+)
+
+p <- ggplot(long, aes(x = X, y = Y)) +
+  geom_point(alpha = 0.4, color = "steelblue") +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  facet_wrap(~ Feature, scales = "free_x", nrow = 1) +  # single row
+  labs(x = "Feature value", y = "Y: Appliances (Wh)",
+       title = "Scatter plots: X1–X5 vs Y") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.margin = margin(10, 20, 10, 20),
+    strip.text = element_text(size = 12),
+    axis.text.x = element_text(angle = 0, hjust = 0.5)
+  )
+
+p
+
+```
+
+
+
+
+
+#HISTOGRAM
+```{r REUSLT, paged.print=TRUE}
+par(mfrow=c(2,3))
+```
+
+
+```{r}
+for (k in paste0("X", 1:5)) { hist(my.data[, k], main = k, xlab = k) }
+```
+```{r}
+hist(my.data[, "Y"], main = "Y", xlab = "Y")
+```
+# minmax normalisation and z-score standardisation and scaling to unit interval
+```{r}
+# minmax normalisation
+minmax <- function(x){
+  (x - min(x))/(max(x)-min(x))
+}
+
+# z-score standardisation and scaling to unit interval
+unit.z <- function(x){
+  0.15*((x-mean(x))/sd(x)) + 0.5
+}
+```
+#If all observations are positive, a Box–Cox transform estimates the “best” power:
+```{r}
+library(MASS)
+
+boxcox_transform <- function(x, lambda_seq = seq(-2, 2, by = 0.1), plot = FALSE) {
+  # x: numeric vector (positive values for Box–Cox)
+  # lambda_seq: grid of lambda values to search over
+  # plot: whether to show the boxcox profile plot
+  
+  # Fit Box–Cox over an intercept-only model
+  bc <- boxcox(x ~ 1, lambda = lambda_seq, plotit = plot)
+  
+  # Choose lambda that maximizes log-likelihood
+  lambda_hat <- bc$x[which.max(bc$y)]
+  
+  # Apply the transformation
+  if (abs(lambda_hat) < 1e-6) {
+    x_bc <- log(x)
+  } else {
+    x_bc <- (x^lambda_hat - 1) / lambda_hat
+  }
+  
+  # Return both transformed data and chosen lambda
+  list(
+    x_bc  = x_bc,
+    lambda = lambda_hat
+  )
+}
+
+```
+
+```{r}
+I <- c( 'X1', 'X2', 'X3', 'X4', 'X5','Y')
+variables_to_transform <- my.data[,I]
+
+#variables_to_transform[,"Y"]=boxcox_transform(variables_to_transform[,"Y"],plot=TRUE)$x_bc
+variables_to_transform[,"X1"]=boxcox_transform(variables_to_transform[,"X1"],plot=TRUE)$x_bc
+variables_to_transform[,"X2"]=boxcox_transform(variables_to_transform[,"X2"],plot=TRUE)$x_bc
+variables_to_transform[,"X3"]=boxcox_transform(variables_to_transform[,"X3"],plot=TRUE)$x_bc
+variables_to_transform[,"X4"]=boxcox_transform(variables_to_transform[,"X4"],plot=TRUE)$x_bc
+variables_to_transform[,"X5"]=boxcox_transform(variables_to_transform[,"X5"],plot=TRUE)$x_bc
+head(variables_to_transform)
+```
+#plot
+```{r}
+hist(variables_to_transform[, "Y"], main = "Y", xlab = "Y")
+```
+
+```{r}
+for (k in paste0("X", 1:5)) { hist(variables_to_transform[, k], main = k, xlab = k) }
+```
+
+
+
+#data transfromation
+```{r}
+data.transformed=variables_to_transform;
+for (k in paste0("X", 1:5)) {  data.transformed[,k]=minmax(data.transformed[,k]); 
+hist(data.transformed[, k], main = k, xlab = k) }
+```
+```{r}
+data.transformed[,'Y']=minmax(variables_to_transform[,'Y']); 
+hist(data.transformed[,'Y'], main = 'Y', xlab = 'Y')
+```
+
+#save transformed data
+```{r}
+write.table(data.transformed, "balaji-transformed.txt")  
+```
+```{r}
+source("AggWaFit718.R")
+```
+##########################################
+#T3 - Build models and investigate
+##########################################
+
+```{r}
+source("AggWaFit718.R")
+```
+
+
+```{r}
+data.transformed_copy <- data.transformed
+  #as.matrix(read.table("balaji-transformed.txt"))
+```
+
+# Get weights for Weighted Arithmetic Mean with fit.QAM() 
+```{r}
+fit.QAM(data.transformed_copy,output.1="WAM3.txt",stats.1 = "WAM-stats3.txt")
+```
+```{r}
+data.transformed_copy[1,1]
+```
+```{r}
+length(data.transformed[,6])
+  
+```
+
+
+
+# Get weights for Power Mean p=0.5 and p=2 with fit.QAM()
+```{r}
+fit.QAM(data.transformed_copy,output.1="powermean3.txt",stats.1 = "powermean-stats3.txt",g=PM05,g.inv=invPM05)
+```
+
+
+
+# Get weights for Ordered Weighted Average with fit.OWA()
+```{r}
+fit.OWA(data.transformed_copy,output.1="OWA3.txt",stats.1 = "OWA-stats3.txt")
+```
+
+
+# Get weights for Choquet Integral with fit.choquet() - Optional
+```{r}
+fit.choquet(data.transformed_copy,output.1="choquet3.txt",stats.1 = "choquet-stats3.txt")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+data.transformed[,2]=variables_to_transform[,1]^05

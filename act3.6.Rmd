@@ -1,0 +1,582 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code.
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*.
+
+```{r}
+source("AggWaFit718.R")
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```{r}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r}
+# Read the data file
+data <- read.table("KeiHotels.txt", header = FALSE, sep = "\t")
+hotelData<-data
+# Check structure of the dataset
+str(data)
+
+# Set up plotting area: 2 rows × 5 columns
+par(mfrow = c(2, 3))
+
+# Loop through each of the 10 variables (columns)
+for (i in 1:10) {
+  hist(
+    data[[i]],
+    main = paste("Histogram of Variable", i),
+    xlab = paste("Variable", i),
+    col = "skyblue",
+    border = "white"
+  )
+}
+
+```
+
+##compute similarity or difference using measures like Euclidean distance or correlation between Kei’s ratings and each other user’s ratings.
+```{r}
+data <- read.table("KeiHotels.txt", header = FALSE, sep = "\t")
+
+# Compute correlations of each user (column) with Kei (column 10)
+correlations <- sapply(1:10, function(i) cor(data[, i], data[, 10]))
+
+# Show correlations with Kei
+correlations
+
+
+```
+#enerate an R visualization showing how Kei’s ratings correlate with the other users (for example, a bar plot of correlations or a heatmap)
+```{r}
+# Read data file (tab-separated, no headers)
+data <- read.table("KeiHotels.txt", header = FALSE, sep = "\t")
+
+# Kei is user 10 (the 10th column)
+kei <- data[, 10]
+
+# Compute Pearson correlation between Kei and each of the 10 users
+correlations <- sapply(1:10, function(i) cor(data[, i], kei))
+
+# Name each correlation
+names(correlations) <- paste("User", 1:10)
+
+# Display correlations numerically
+print(correlations)
+
+# ---- Plot correlations ----
+barplot(
+  correlations,
+  col = ifelse(names(correlations) == "User 10", "gold", "skyblue"),
+  main = "Similarity of Each User to Kei (User 10)",
+  ylab = "Correlation with Kei",
+  xlab = "User",
+  ylim = c(-1, 1)
+)
+
+abline(h = 0, col = "red", lwd = 2, lty = 2)
+text(
+  x = 1:10,
+  y = correlations,
+  labels = round(correlations, 2),
+  pos = ifelse(correlations >= 0, 3, 1),
+  cex = 0.8
+)
+
+```
+
+```{r}
+my.data<-data
+# Put everything on [0,1]
+my.data <- my.data / 100
+
+# Check ranges
+#apply(my.data, 2, range)
+
+colnames(my.data) <- c(paste0("U", 1:9), "Kei")
+```
+
+# 4. Fit weighted arithmetic mean (default g = AM)
+```{r}
+fit.QAM(my.data, 
+        output.1 = "my_data_wam_output.txt",
+        stats.1  = "my_data_wam_stats.txt")   # WAM model
+```
+
+# 5. Fit specific power means via generators in AggWaFit718.R
+```{r}
+fit.QAM(my.data,
+        output.1 = "my_data_pm05_output.txt",
+        stats.1  = "my_data_pm05_stats.txt",
+        g        = PM05,
+        g.inv    = invPM05)
+```
+
+# p = 2 quadratic mean
+```{r}
+fit.QAM(my.data,
+        output.1 = "my_data_qm_output.txt",
+        stats.1  = "my_data_qm_stats.txt",
+        g        = QM,
+        g.inv    = invQM)
+```
+# Approximate geometric mean (uses GMa / invGMa as done in the book)
+```{r}
+fit.QAM(my.data,
+        output.1 = "my_data_gm_output.txt",
+        stats.1  = "my_data_gm_stats.txt",
+        g        = GMa,
+        g.inv    = invGMa)
+```
+# 6. Fit OWA
+```{r}
+kei <- as.matrix(read.table("KeiHotels.txt", header = FALSE))
+
+# Give names (optional but helpful)
+colnames(kei) <- c(paste0("U", 1:9), "Kei")
+my.data<-   kei
+fit.OWA(my.data,
+        output.1 = "my_data_owa_output.txt",
+        stats.1  = "my_data_owa_stats.txt")
+```
+# 7. Fit Choquet integral (kadd controls k-additivity if you want)
+```{r}
+fit.choquet(my.data,
+            output.1 = "my_data_choquet_output.txt",
+            stats.1  = "my_data_choquet_stats.txt")
+```
+
+
+#a. Error and correlation analysis
+```{r}
+read_stats <- function(file) {
+  lines <- readLines(file)
+
+  get_val <- function(pattern) {
+    # Find first line starting with the pattern, e.g. "RMSE"
+    idx  <- grep(pattern, lines)[1]
+    line <- lines[idx]
+    # Extract the last number on the line
+    as.numeric(sub(".*?(-?[0-9.]+)\\s*$", "\\1", line))
+  }
+
+  list(
+    RMSE     = get_val("^RMSE"),
+    L1       = get_val("^Av\\. abs error"),
+    Pearson  = get_val("^Pearson"),
+    Spearman = get_val("^Spearman"),
+    Orness   = get_val("^Orness")
+  )
+}
+
+wam   <- read_stats("my_data_wam_stats.txt")
+pm05  <- read_stats("my_data_pm05_stats.txt")
+qm    <- read_stats("my_data_qm_stats.txt")
+owa   <- read_stats("my_data_owa_stats.txt")
+chq   <- read_stats("my_data_choquet_stats.txt")
+
+error_cor_summary <- data.frame(
+  Model    = c("WAM", "PM0.5", "QM2", "OWA", "Choquet"),
+  RMSE     = c(wam$RMSE, pm05$RMSE, qm$RMSE, owa$RMSE, chq$RMSE),
+  L1       = c(wam$L1, pm05$L1, qm$L1, owa$L1, chq$L1),
+  Pearson  = c(wam$Pearson, pm05$Pearson, qm$Pearson, owa$Pearson, chq$Pearson),
+  Spearman = c(wam$Spearman, pm05$Spearman, qm$Spearman, owa$Spearman, chq$Spearman),
+  Orness   = c(wam$Orness, pm05$Orness, qm$Orness, owa$Orness, chq$Orness)
+)
+error_cor_summary
+
+```
+
+#4.1 Extract weights for WAM / PM0.5 / QM2 / OWA
+```{r}
+read_weights <- function(file, n_inputs = 9) {
+  s <- read.table(file, stringsAsFactors = FALSE, fill = TRUE)
+  # Find the row where weights start: first row whose first column is "i"
+  idx <- which(s[,1] == "i")[1]
+  w_block <- s[(idx + 1):(idx + n_inputs), ]
+  w <- as.numeric(w_block[, 2])
+  names(w) <- paste0("U", 1:n_inputs)
+  w
+}
+
+w_wam  <- read_weights("my_data_wam_stats.txt")
+w_pm05 <- read_weights("my_data_pm05_stats.txt")
+w_qm   <- read_weights("my_data_qm_stats.txt")
+w_owa  <- read_weights("my_data_owa_stats.txt")
+
+w_wam
+w_pm05
+w_qm
+w_owa
+
+```
+```{r}
+read_weights <- function(file, n_inputs = 9) {
+  lines <- readLines(file)
+
+  # Find the header line for the weights: starts with "i" and contains "w_i"
+  header_idx <- grep("^i\\s+w_i", lines)[1]
+
+  # Next n_inputs lines are the weights
+  w_lines <- lines[(header_idx + 1):(header_idx + n_inputs)]
+
+  # Split each line on whitespace
+  parts <- strsplit(w_lines, "\\s+")
+
+  # First element is index, last element is weight value
+  idx <- sapply(parts, function(z) as.integer(z[1]))
+  w   <- sapply(parts, function(z) as.numeric(z[length(z)]))
+
+  # Name by user index (you can use paste0("U", 1:n_inputs) if you prefer)
+  names(w) <- paste0("U", idx)
+
+  w
+}
+
+w_wam  <- read_weights("my_data_wam_stats.txt")
+w_pm05 <- read_weights("my_data_pm05_stats.txt")
+w_qm   <- read_weights("my_data_qm_stats.txt")
+w_owa  <- read_weights("my_data_owa_stats.txt")
+
+w_wam
+w_pm05
+w_qm
+w_owa
+```
+4.2 Shapley values as “weights” for Choquet
+```{r}
+read_shapley <- function(file, n_inputs = 9) {
+  s <- read.table(file, stringsAsFactors = FALSE,fill=TRUE)
+  idx <- which(s[,1] == "i" & s[,2] == "Shapley")[1]  # or just s[,1]=="i"
+  # next n_inputs rows contain i and shapley(i)
+  sh_block <- s[(idx + 1):(idx + n_inputs), ]
+  sh <- as.numeric(sh_block[, 2])
+  names(sh) <- paste0("U", 1:n_inputs)
+  sh
+}
+
+sh_chq <- read_shapley("my_data_choquet_stats.txt")
+sh_chq
+
+```
+
+#5. Orness analysis
+
+```{r}
+error_cor_summary[, c("Model", "Orness")]
+
+```
+
+#6. Fuzzy measures analysis (additive, superadditive, redundant)
+```{r}
+read_fm <- function(file, n_inputs = 9) {
+  s <- read.table(file, stringsAsFactors = FALSE,fill=TRUE )
+  idx <- which(s[,1] == "binary" & s[,2] == "number")[1]  # row with header
+  fm_block <- s[(idx + 1):nrow(s), ]
+  # first column is index k, second column is fuzzy measure value
+  k  <- as.integer(fm_block[, 1])
+  fm <- as.numeric(fm_block[, 2])
+  out <- numeric(2^n_inputs)
+  out[k + 1] <- fm   # fm[2:(2^n)] in AggWaFit
+  out
+}
+
+fm <- read_fm("my_data_choquet_stats.txt")  # fm[0] unused, fm[2^n] = 1 (full set)
+
+# Helper to get m(A) for a set of indices e.g. c(1,3) for U1 and U3
+m_set <- function(vars) {
+  idx <- sum(2^(vars - 1))
+  fm[idx + 1]
+}
+
+# Check pairwise relationships for all pairs
+n_inputs <- 9
+pair_analysis <- data.frame()
+for (i in 1:(n_inputs - 1)) {
+  for (j in (i + 1):n_inputs) {
+    m_i  <- m_set(i)
+    m_j  <- m_set(j)
+    m_ij <- m_set(c(i, j))
+    rel <- if (abs(m_ij - (m_i + m_j)) < 1e-6) {
+      "additive"
+    } else if (m_ij > m_i + m_j) {
+      "superadditive"
+    } else {
+      "subadditive (redundant)"
+    }
+    pair_analysis <- rbind(pair_analysis,
+                           data.frame(Ui = i, Uj = j,
+                                      m_i = m_i, m_j = m_j,
+                                      m_ij = m_ij, relation = rel))
+  }
+}
+pair_analysis
+
+```
+#table example
+```{r}
+# R Script to Append Rows to a Table (Data Frame) and Write to a CSV File
+
+# 1. Create an initial data frame (table)
+# This simulates loading an existing file into R.
+initial_data <- data.frame(
+  ID = 1:3,
+  Name = c("Alice", "Bob", "Charlie"),
+  Score = c(85.5, 92.0, 78.5)
+)
+
+# Print the initial data frame
+print("--- Initial Data Frame ---")
+print(initial_data)
+
+# 2. Create a new data frame with rows to append
+# The column names MUST exactly match the initial_data frame.
+new_rows <- data.frame(
+  ID = 4:5,
+  Name = c("David", "Eve"),
+  Score = c(95.0, 88.0)
+)
+
+# Print the new rows
+print("--- New Rows to Append ---")
+print(new_rows)
+
+# 3. Use the rbind() function to append the new rows
+# rbind() stands for "row bind" and stacks the second data frame below the first.
+final_data <- rbind(initial_data, new_rows)
+
+# Print the final combined data frame
+print("--- Final Combined Data Frame ---")
+print(final_data)
+
+# 4. Write the final data frame to a CSV file.
+# We'll name the file 'combined_scores.csv'.
+
+# Arguments explained:
+# - final_data: The data frame to be written.
+# - "combined_scores.csv": The name and path of the output file.
+# - row.names = FALSE: This prevents R from writing the row numbers (1, 2, 3...) 
+#   as an extra column in the CSV file, which is usually desired.
+write.csv(final_data, "combined_scores.csv", row.names = FALSE)
+
+print("--- Status ---")
+cat("Successfully appended rows and saved the combined data to 'combined_scores.csv'.\n")
+
+# To verify, you could run (if you were in a local R environment):
+ read_back <- read.csv("combined_scores.csv")
+ print(read_back)
+```
+
+#act3.8
+##Predicting Outputs for Unknown/New Data
+```{r}
+hotel2 = c(98,50,62,63,81,72,82,96,51)
+hotel826 = c(94,99,63,58,96,70,91,59,86)
+hotel977 = c(59,85,66,55,78,91,87,94,73)
+hotel2 = hotel2/100
+hotel826 = hotel826/100
+hotel977 = hotel977/100
+initial_data <- data.frame(
+  MODEL = "MODEL",
+  hotel2 =  "hotel2",
+  hotel826 =  "hotel826",
+  hotel977 =  "hotel977"
+
+)
+```
+##WAM
+```{r}
+WAMweights = c(0.0194056285221035, 0.0390876342948007, 0.102891478464021,
+               0.240427752211895, 0.281991744682169, 0.0470448373526975,
+               0, 0.110916927376011, 0.158234447096302)
+
+QAM(hotel2,  WAMweights)*100   # 0.7032886
+QAM(hotel826, WAMweights)*100  # 0.7663735
+QAM(hotel977, WAMweights)*100  # 0.7273545
+new_rows <- data.frame(
+  MODEL = "QAM",
+  hotel2 =  QAM(hotel2,  WAMweights)*100 ,
+  hotel826 =  QAM(hotel826, WAMweights)*100,
+  hotel977 =  QAM(hotel977, WAMweights)*100
+)
+final_data <- rbind(initial_data, new_rows)
+print(final_data)
+```
+##choquet integral
+```{r}
+Choquetweights = c(0.446555572327044, 0.0842432704402515, 0.530798842767296,
+                   0.425803966457023, 0.871639538784067, 0.509327236897274,
+                   0.955882809224319, 0.0441171907756814, 0.490672763102726,
+                   0.128360461215933, 0.574916033542977, 0.469201157232704,
+                   0.915756729559749, 0.553444427672956, 1)
+
+choquet(hotel2[c(5,4,9,8)],  Choquetweights)*100   # 0.6739286
+choquet(hotel826[c(5,4,9,8)], Choquetweights)*100 # 0.8691558
+choquet(hotel977[c(5,4,9,8)], Choquetweights)*100
+new_rows <- data.frame(
+  MODEL = "choquet",
+  hotel2 =  choquet(hotel2[c(5,4,9,8)],  Choquetweights)*100,
+  hotel826 =  choquet(hotel826[c(5,4,9,8)],  Choquetweights)*100,
+  hotel977 =  choquet(hotel977[c(5,4,9,8)],  Choquetweights)*100
+)
+final_data <- rbind(final_data, new_rows)
+print(final_data)
+```
+##QM2
+```{r}
+WAMweights=c( 0.992756385817767,0.00724361418223826,0,0,0,0,0,0,0)
+QAM(hotel2,  WAMweights,g = QM,g.inv = invQM)*100    
+QAM(hotel826, WAMweights,g = QM,g.inv = invQM)*100   
+QAM(hotel977, WAMweights,g = QM,g.inv = invQM)*100
+new_rows <- data.frame(
+  MODEL = "QM2",
+  hotel2 =  QAM(hotel2,  WAMweights,g = QM,g.inv = invQM)*100,
+  hotel826 =  QAM(hotel826,  WAMweights,g = QM,g.inv = invQM)*100,
+  hotel977 =  QAM(hotel977,  WAMweights,g = QM,g.inv = invQM)*100
+)
+final_data <- rbind(final_data, new_rows)
+print(final_data)
+```
+##OWA
+```{r}
+OWAWeihts=c(0.00561360852374349, 0.649396811440956, 0, 0.110060431712527, 0.234929148322771)
+OWA(hotel2,OWAWeihts)*100
+OWA(hotel826,OWAWeihts)*100
+OWA(hotel977,OWAWeihts)*100
+new_rows <- data.frame(
+  MODEL = "OWA",
+  hotel2 =  OWA(hotel2,OWAWeihts)*100,
+  hotel826 = OWA(hotel826,OWAWeihts)*100,
+  hotel977 =  OWA(hotel977,OWAWeihts)*100
+)
+final_data <- rbind(final_data, new_rows)
+print(final_data)
+```
+##POWER MEAN
+```{r}
+WDIGHTS=c(0.743833570692786, 0.0430382408898976, 0.102106437781419, 0.0156799062260132, 0, 0.09526940910553, 0, 7.24353043538538e-05, 0)
+ 
+new_rows <- data.frame(
+  MODEL = "POWER MEAN",
+  hotel2 =  QAM(hotel2,  WDIGHTS,g        = PM05,
+        g.inv    = invPM05)*100,
+  hotel826 = QAM(hotel2,  WDIGHTS,g        = PM05,
+        g.inv    = invPM05)*100,
+  hotel977 =  QAM(hotel2,  WDIGHTS,g        = PM05,
+        g.inv    = invPM05)*100
+)
+final_data <- rbind(final_data, new_rows)
+print(final_data)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

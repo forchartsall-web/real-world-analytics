@@ -1,0 +1,10 @@
+RMSE NA
+Av. abs error NA
+Pearson correlation NA
+Spearman correlation NA
+i w_i 
+1 0
+2 0.661949939346777
+3 0.338050060653216
+4 0
+5 0
