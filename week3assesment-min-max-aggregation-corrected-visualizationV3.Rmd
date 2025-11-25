@@ -3,158 +3,151 @@ title: "R Notebook"
 output:
   html_document:
     df_print: paged
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code.
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you
+execute code within the notebook, the results appear beneath the code.
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*.
+Try executing this chunk by clicking the *Run* button within the chunk
+or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*.
 
 ```{r}
 the.data <- as.matrix(read.table("ENB.txt"))  
 ```
 
-
 ```{r}
 set.seed(226156731)
 ```
-
 
 ```{r}
 num_row<-650
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+# Loading and Inspecting the Dataset
+
+#### Justification: Understanding structure and ranges of variables is essential before transformation; summary statistics reveal potential skewness or ##outliers.
+
 ```{r}
-```
-#read a random sample of 650 rows from the data
-```{r}
-my.data <- the.data[sample(1:nrow(the.data),num_row), 2:7]
-head(my.data)
-```
-```{r}
-colnames(my.data)<- c("X1","X2","X3","X4","X5","Y")
-head(my.data)
-```
+install.packages("tidyverse") # if needed
+install.packages("car") 
+library(tidyverse)
+library(tidyverse)
+library(car)
+library(corrplot)
+library(GGally)
 
+# Load your file
+df <- as.matrix(read.table("my-data2.txt", header = TRUE))
 
+# Inspect structure
+str(df)
+summary(df)
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
-
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
-# Scatter plots of X1–X5 vs Y with regression lines
-```{r}
-# Choose the source matrix
-src <- my.data  # or use the.data
-
-# If there is a leading index column, drop it
-if (ncol(src) == 7) src <- src[, 2:7, drop = FALSE]
-
-# Ensure column names exist; assign if needed
-if (is.null(colnames(src)) || !all(colnames(src) %in% c("X1","X2","X3","X4","X5","Y"))) {
-  colnames(src) <- c("X1","X2","X3","X4","X5","Y")
-}
-
-# Set a 2x3 layout for five plots
-op <- par(mfrow = c(2, 3), mar = c(4, 4, 2, 1))
-
-plot(src[,"X1"], src[,"Y"], xlab = "X1: Living room temp (°C)", ylab = "Y: Appliances (Wh)",
-     pch = 19, col = rgb(0,0,1,0.4), main = "X1 vs Y")
-abline(lm(Y ~ X1, data = as.data.frame(src)), col = "red", lwd = 2)
-
-plot(src[,"X2"], src[,"Y"], xlab = "X2: Living room humidity (%)", ylab = "Y: Appliances (Wh)",
-     pch = 19, col = rgb(0,0,1,0.4), main = "X2 vs Y")
-abline(lm(Y ~ X2, data = as.data.frame(src)), col = "red", lwd = 2)
-
-plot(src[,"X3"], src[,"Y"], xlab = "X3: Office temp (°C)", ylab = "Y: Appliances (Wh)",
-     pch = 19, col = rgb(0,0,1,0.4), main = "X3 vs Y")
-abline(lm(Y ~ X3, data = as.data.frame(src)), col = "red", lwd = 2)
-
-plot(src[,"X4"], src[,"Y"], xlab = "X4: Office humidity (%)", ylab = "Y: Appliances (Wh)",
-     pch = 19, col = rgb(0,0,1,0.4), main = "X4 vs Y")
-abline(lm(Y ~ X4, data = as.data.frame(src)), col = "red", lwd = 2)
-
-plot(src[,"X5"], src[,"Y"], xlab = "X5: Pressure (mmHg)", ylab = "Y: Appliances (Wh)",
-     pch = 19, col = rgb(0,0,1,0.4), main = "X5 vs Y")
-abline(lm(Y ~ X5, data = as.data.frame(src)), col = "red", lwd = 2)
-
-par(op)
-
-```
-```{r}
-install.packages("ggplot2") # if needed
-library(ggplot2)
-src <- my.data   
-if (ncol(src) == 7) src <- src[, 2:7, drop = FALSE]
-colnames(src) <- c("X1","X2","X3","X4","X5","Y")
-
-df <- as.data.frame(src)
-long <- reshape(
-  df,
-  varying = list(names(df)[1:5]),
-  v.names = "X",
-  timevar = "Feature",
-  times = names(df)[1:5],
-  direction = "long"
-)
-
-ggplot(long, aes(x = X, y = Y)) +
-  geom_point(alpha = 0.4, color = "steelblue") +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
-  facet_wrap(~ Feature, scales = "free_x") +
-  labs(x = "Feature value", y = "Y: Appliances (Wh)", title = "Scatter plots: X1–X5 vs Y") +
-  theme_minimal(base_size = 12)
-```
-```{r}
-library(ggplot2)
-
-src <- my.data  # or the.data
-if (ncol(src) == 7) src <- src[, 2:7, drop = FALSE]
-colnames(src) <- c("X1","X2","X3","X4","X5","Y")
-
-df <- as.data.frame(src)
-long <- reshape(
-  df,
-  varying = list(names(df)[1:5]),
-  v.names = "X",
-  timevar = "Feature",
-  times = names(df)[1:5],
-  direction = "long"
-)
-
-p <- ggplot(long, aes(x = X, y = Y)) +
-  geom_point(alpha = 0.4, color = "steelblue") +
-  geom_smooth(method = "lm", se = FALSE, color = "red") +
-  facet_wrap(~ Feature, scales = "free_x", nrow = 1) +  # single row
-  labs(x = "Feature value", y = "Y: Appliances (Wh)",
-       title = "Scatter plots: X1–X5 vs Y") +
-  theme_minimal(base_size = 13) +
-  theme(
-    plot.margin = margin(10, 20, 10, 20),
-    strip.text = element_text(size = 12),
-    axis.text.x = element_text(angle = 0, hjust = 0.5)
-  )
-
-p
 
 ```
 
+install.packages("tidyverse")
+
+# Visualising Distributions of Variables
+
+```{r Histogram + Density for Each Variable}
+df %>% 
+  pivot_longer(everything(), names_to = "variable", values_to = "value") %>%
+  ggplot(aes(value)) +
+  geom_histogram(bins = 30, alpha = 0.5) +
+  geom_density() +
+  facet_wrap(~ variable, scales = "free") +
+  theme_minimal() +
+  labs(title = "Distribution of All Variables")
 
 
+```
 
+#### Interpretation / Critical Comment:
 
-#HISTOGRAM
+-   Most X variables appear approximately uniform or moderately skewed.
+
+-   Y shows a multi-modal distribution, suggesting potential grouping or
+    latent clusters.
+
+-   Since values are already scaled (0–1), further standardization is
+    not necessary, but transformations may be appropriate depending on
+    skewnes
+
+# Correlation Analysis
+
+## Correlation Matrix & Heatmap
+
+```{r Correlation Matrix & Heatmap}
+install.packages("corrplot")
+library(corrplot)
+
+cor_matrix <- cor(df)
+
+corrplot(cor_matrix, method = "color", type = "upper",
+         tl.col = "black", tl.cex = 0.7)
+
+```
+
+#### Critical Interpretation:
+
+-   Strong relationships between X1-X3 and X2-X4
+-   Medium relationships between X2-X5 and X4-X5
+-   Weak correlations between predictors and **Y** may suggest the need
+    for polynomial terms, interaction effects, nonlinear models.\
+
+# Scatterplots to Examine Predictor–Response Relationships
+
+```{r Scatterplots to Examine Predictor–Response Relationships}
+df %>% 
+  pivot_longer(cols = starts_with("X"), 
+               names_to = "predictor", values_to = "value") %>%
+  ggplot(aes(value, Y)) +
+  geom_point(alpha = 0.4) +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~ predictor, scales = "free_x") +
+  theme_minimal() +
+  labs(title = "Relationships Between Predictors and Y")
+
+```
+
+#### Critical Interpretation:
+
+-   Some predictors show nonlinear relationships (bow-shaped, plateau).
+
+-   Linear modelling may be insufficient; transformations can capture
+    nonlinearity.
+
+AM
+
 ```{r REUSLT, paged.print=TRUE}
 par(mfrow=c(2,3))
 ```
 
-
 ```{r}
-for (k in paste0("X", 1:5)) { hist(my.data[, k], main = k, xlab = k) }
+library(ggplot2)
+library(GGally)
+df <- read.table("balaji-transformed.txt", header=TRUE)
+# Histograms and density for each variable
+par(mfrow=c(2,3))
+for (col in colnames(df)) {
+  hist(df[[col]], main=paste("Histogram of", col), xlab=col, border="grey", col="skyblue", probability=TRUE)
+  lines(density(df[[col]], na.rm=TRUE), col="red", lwd=2)
+}
+# Pairplot for correlations
+ggpairs(df)
+
 ```
+
 ```{r}
 hist(my.data[, "Y"], main = "Y", xlab = "Y")
 ```
+
 # minmax normalisation and z-score standardisation and scaling to unit interval
+
 ```{r}
 # minmax normalisation
 minmax <- function(x){
@@ -166,7 +159,10 @@ unit.z <- function(x){
   0.15*((x-mean(x))/sd(x)) + 0.5
 }
 ```
-#If all observations are positive, a Box–Cox transform estimates the “best” power:
+
+#If all observations are positive, a Box–Cox transform estimates the
+“best” power:
+
 ```{r}
 library(MASS)
 
@@ -196,6 +192,7 @@ boxcox_transform <- function(x, lambda_seq = seq(-2, 2, by = 0.1), plot = FALSE)
 }
 
 ```
+
 ```{r . Grid search over with lambda values from -2 to 2 in steps of 0.1 with Shapiro–Wilk test of normalization  }
 normality_score_sw <- function(x, n) {
   x_t <- x ^ n
@@ -251,7 +248,9 @@ variables_to_transform[,"X5"]=variables_to_transform[,"X5"]^res_swX5$n_opt
 head(variables_to_transform)
 
 ```
+
 #plot
+
 ```{r}
 hist(variables_to_transform[, "Y"], main = "Y", xlab = "Y")
 ```
@@ -260,48 +259,48 @@ hist(variables_to_transform[, "Y"], main = "Y", xlab = "Y")
 for (k in paste0("X", 1:5)) { hist(variables_to_transform[, k], main = k, xlab = k) }
 ```
 
-
-
-
-
 #save transformed data
+
 ```{r}
 data.transformed=variables_to_transform;
 write.table(data.transformed, "balaji-transformed.txt")  
 ```
+
 ```{r}
 source("AggWaFit718.R")
 ```
-##########################################
+
+########################################## 
+
 #T3 - Build models and investigate
-##########################################
+\##########################################
 
 ```{r}
 source("AggWaFit718.R")
 ```
-
 
 ```{r}
 data.transformed_copy <- data.transformed
   #as.matrix(read.table("balaji-transformed.txt"))
 ```
 
-# Get weights for Weighted Arithmetic Mean with fit.QAM() 
+# Get weights for Weighted Arithmetic Mean with fit.QAM()
+
 ```{r}
 fit.QAM(data.transformed_copy,output.1="WAM3.txt",stats.1 = "WAM-stats3.txt")
 ```
+
 ```{r}
 data.transformed_copy[1,1]
 ```
+
 ```{r}
 length(data.transformed[,6])
   
 ```
 
-
-
-
 # Get weights for Power Mean p=0.5 and p=2 with fit.QAM()
+
 ```{r}
 fit.QAM(data.transformed_copy,output.1="powermean3.txt",stats.1 = "powermean-stats3.txt",g=PM05,g.inv=invPM05)
 fit.QAM(data.transformed_copy,output.1="powermean32.txt",stats.1 = "powermean-stats32.txt",g=QM,g.inv=invQM)
@@ -309,22 +308,22 @@ fit.QAM(data.transformed_copy,output.1="powermean3-1.txt",stats.1 = "powermean-s
 fit.QAM(data.transformed_copy,output.1="powermean30.txt",stats.1 = "powermean-stats30.txt",g=GM,g.inv=invGM)
 ```
 
-
-
 # Get weights for Ordered Weighted Average with fit.OWA()
+
 ```{r}
 fit.OWA(data.transformed_copy,output.1="OWA3.txt",stats.1 = "OWA-stats3.txt")
 ```
 
-
 # Get weights for Choquet Integral with fit.choquet() - Optional
+
 ```{r}
 fit.choquet(data.transformed_copy,output.1="choquet3.txt",stats.1 = "choquet-stats3.txt")
 ```
 
-#######################################
-#T4 - Use Model for Prediction
-#######################################
+####################################### 
+
+#T4 - Use Model for Prediction \#######################################
+
 ```{r imort new data}
 # Your data
 new.data <- c(23.5, 35.87125, 24.89, 32.93, 758.55)
@@ -339,6 +338,7 @@ colnames(new.data) <- c("X1", "X2", "X3", "X4", "X5")
 new.data
 
 ```
+
 ```{r transform new data}
 new_input_to_transform <- new.data
 new_input_to_transform[,"X1"]=(new_input_to_transform[,"X1"]-min(my.data[,"X1"]))/(max(my.data[,"X1"])-min(my.data[,"X1"]))+1e-6
@@ -353,6 +353,7 @@ new_input_to_transform[,"X4"]=new_input_to_transform[,"X4"]^res_swX4$n_opt
 new_input_to_transform[,"X5"]=new_input_to_transform[,"X5"]^res_swX5$n_opt
 new_input_to_transform
 ```
+
 ```{r predict Y using QM model}
 # Load the weights from the best model (QM in this case
 weights_QM <- c(0.934,0,0.066,0,0)
@@ -373,189 +374,3 @@ original_max_Y <- max(my.data[,"Y"])
 result_original_scale <- result_scaled * (original_max_Y - original_min_Y) + original_min_Y
 result_original_scale
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

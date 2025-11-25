@@ -1,0 +1,47 @@
+Summary statistics:
+       X1              X2              X3              X4              X5              Y         
+ Min.   :16.10   Min.   :20.46   Min.   :15.10   Min.   :27.66   Min.   :729.3   Min.   :  10.0  
+ 1st Qu.:18.79   1st Qu.:37.90   1st Qu.:19.53   1st Qu.:35.53   1st Qu.:750.9   1st Qu.:  50.0  
+ Median :20.00   Median :40.50   Median :20.67   Median :38.40   Median :756.1   Median :  60.0  
+ Mean   :20.34   Mean   :40.42   Mean   :20.86   Mean   :39.03   Mean   :755.5   Mean   :  97.7  
+ 3rd Qu.:21.50   3rd Qu.:43.26   3rd Qu.:22.10   3rd Qu.:42.16   3rd Qu.:760.9   3rd Qu.: 100.0  
+ Max.   :29.86   Max.   :56.03   Max.   :26.20   Max.   :51.09   Max.   :772.3   Max.   :1080.0  
+
+Correlation matrix:
+       X1     X2     X3     X4     X5      Y
+X1  1.000 -0.166  0.762  0.232 -0.133  0.120
+X2 -0.166  1.000 -0.047  0.721 -0.256 -0.060
+X3  0.762 -0.047  1.000 -0.049 -0.075  0.040
+X4  0.232  0.721 -0.049  1.000 -0.251  0.017
+X5 -0.133 -0.256 -0.075 -0.251  1.000 -0.035
+Y   0.120 -0.060  0.040  0.017 -0.035  1.000
+
+Condition number: 6.542 
+
+VIFs (original):
+      X1       X2       X3       X4       X5 
+7.980752 5.849774 5.635613 6.552831 1.122137 
+
+VIFs (transformed predictors):
+      X1       X2       X3       X4       X5 
+8.025215 5.809391 5.681188 6.572541 1.123245 
+
+Transform notes:
+$X1
+[1] "sqrt"
+
+$X2
+[1] "none"
+
+$X3
+[1] "none"
+
+$X4
+[1] "none"
+
+$X5
+[1] "none"
+
+$Y
+[1] "log"
+

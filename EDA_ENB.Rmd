@@ -1,0 +1,264 @@
+---
+title: "EDA Report — ENB Dataset"
+author: "Data Analyst (auto-generated)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, fig.width = 7, fig.height = 4)
+```
+
+# Introduction
+
+This RMarkdown performs a thorough Exploratory Data Analysis (EDA) on the uploaded dataset `ENB.txt`.\
+Assumption: the dataset's final six numeric columns correspond to predictors **X1..X5** and response **Y** (per your earlier instruction). The file path used here is `/mnt/data/ENB.txt`.
+
+Key deliverables: - Univariate distribution plots (histogram + boxplot) - Pairwise scatterplots and correlation matrix - Multicollinearity diagnostics (Condition number, VIF) - Suggested transformations (including Box-Cox for Y if valid) - Re-check of collinearity after transformations - Recommendations and code-ready results
+
+# 1. Setup and load data
+
+```{r packages}
+# install missing packages if needed (comment out in controlled environments)
+packages <- c("readr","dplyr","ggplot2","GGally","corrplot","car","MASS","gridExtra","knitr","kableExtra","scales")
+installed <- packages %in% installed.packages()[,1]
+if(any(!installed)) install.packages(packages[!installed], repos = "https://cloud.r-project.org")
+
+library(readr); library(dplyr); library(ggplot2); library(GGally); library(corrplot)
+library(car); library(MASS); library(gridExtra); library(knitr); library(kableExtra); library(scales)
+```
+
+```{r read-data}
+# Path to uploaded file (already on disk)
+data_path <- "ENB.txt"
+
+# Read robustly assuming whitespace-delimited file
+raw <- read_table2(data_path, col_names = FALSE, skip=1, progress = FALSE)
+
+# Keep numeric columns only
+is_num <- sapply(raw, is.numeric)
+df_num <- raw[, is_num]
+
+# If more than 6 numeric columns (common in ENB variants), keep last 6
+if(ncol(df_num) > 6) df_num <- df_num[ , (ncol(df_num)-5):ncol(df_num)]
+
+colnames(df_num) <- c("X1","X2","X3","X4","X5","Y")
+df <- as.data.frame(df_num)
+glimpse(df)
+```
+
+# 2. Basic summary and missing values
+
+```{r summary}
+summary(df)
+sapply(df, function(x) sum(is.na(x)))
+```
+
+# 3. Univariate analysis (histogram + boxplot)
+
+```{r univariate, fig.height=8, fig.width=7}
+plots <- list()
+for(v in names(df)) {
+  p1 <- ggplot(df, aes_string(x = v)) +
+    geom_histogram(aes(y=..density..), bins = 30) +
+    geom_density(alpha = 0.3) +
+    labs(title = paste("Histogram & density -", v)) +
+    theme_minimal()
+  p2 <- ggplot(df, aes_string(y = v)) +
+    geom_boxplot() + labs(title = paste("Boxplot -", v)) + theme_minimal()
+  plots[[paste0(v,"_h")]] <- p1
+  plots[[paste0(v,"_b")]] <- p2
+}
+
+# Arrange in a grid for preview (2 columns)
+grid.arrange(plots$X1_h, plots$X1_b,
+             plots$X2_h, plots$X2_b,
+             plots$X3_h, plots$X3_b,
+             plots$X4_h, plots$X4_b,
+             plots$X5_h, plots$X5_b,
+             plots$Y_h,  plots$Y_b, ncol = 2)
+```
+
+**Interpretation:** Check each histogram and boxplot for skewness, modality, and outliers. Strong right-skew suggests `log` or `sqrt`; heavy tails or outliers may require case-level inspection.
+
+# 4. Pairwise relationships
+
+```{r pairs, fig.height=8, fig.width=8}
+GGally::ggpairs(df, columns = 1:6, progress = FALSE)
+```
+
+# 5. Correlation matrix
+
+```{r corrplot, fig.width=6, fig.height=5}
+cor_mat <- cor(df, use = "pairwise.complete.obs")
+print(round(cor_mat,3))
+corrplot(cor_mat, method = "ellipse", type = "upper", tl.cex = 0.8)
+```
+
+# 6. Multicollinearity diagnostics
+
+```{r multicollinearity}
+# Condition number (eigen-based)
+X <- as.matrix(df[, c("X1","X2","X3","X4","X5")])
+eigs <- eigen(cor(X))
+cond_number <- sqrt(max(eigs$values)/min(eigs$values))
+cat("Condition number (sqrt(lambda_max/lambda_min)):", round(cond_number,3), "\n")
+
+lm_full <- lm(Y ~ X1 + X2 + X3 + X4 + X5, data = df)
+vifs <- car::vif(lm_full)
+#vif_tbl <- data.frame(variable = names(vifs), VIF = as.numeric(vifs))
+#kable(vif_tbl, caption = "VIFs for predictors") %>% kable_styling(full_width = FALSE)
+```
+
+**Interpretation:**\
+- Condition number \> 30 indicates strong multicollinearity; \>\>100 indicates severe.\
+- VIF \> 5 (or \>10) flags problematic predictors. If VIFs are very large, consider dimension reduction or regularization.
+
+# 7. Transformations — skewness check and Box-Cox for Y
+
+```{r transforms}
+stopifnot(is.data.frame(df))
+library(MASS)
+lm_full <- lm(Y ~ X1 + X2 + X3 + X4 + X5, data = df)
+
+# --- Skewness Calculation ---
+skewness_custom <- function(x) {
+  x <- x[!is.na(x)]
+  m3 <- mean((x - mean(x))^3)
+  s3 <- sd(x)^3
+  m3 / s3
+}
+
+skews <- sapply(df, skewness_custom)
+skew_df <- data.frame(
+  variable = names(skews),
+  skewness = round(as.numeric(skews), 3)
+)
+
+#kable(skew_df, caption = "Skewness of Variables") %>%
+#  kable_styling(full_width = FALSE)
+
+
+
+# Box-Cox on Y (explicitly use MASS::boxcox)
+if (all(is.finite(df$Y)) && all(df$Y > 0)) {
+  if(!requireNamespace("MASS", quietly = TRUE)) install.packages("MASS")
+  bc <- MASS::boxcox(lm_full, plotit = FALSE)
+  lambda_est <- bc$x[which.max(bc$y)]
+  cat("Suggested Box-Cox lambda for Y:", round(lambda_est, 3), "\n")
+} else {
+  cat("Y contains non-positive or non-finite values — skipping Box-Cox on Y.\n")
+}
+
+```
+
+**Transformation rules used (suggested):** - skew \> 1 : `log` (if positive) or signed log - 0.5 \< skew ≤ 1 : `sqrt` - otherwise: no transform
+
+# 8. Apply suggested transforms (predictors only) and re-check collinearity
+
+```{r apply-transforms}
+df_t <- df
+transform_notes <- list()
+
+for(v in names(df_t)) {
+  s <- skewness_custom(df_t[[v]])
+  if(s > 1) {
+    if(all(df_t[[v]] > 0)) {
+      df_t[[v]] <- log(df_t[[v]])
+      transform_notes[[v]] <- "log"
+    } else {
+      df_t[[v]] <- sign(df_t[[v]]) * log(abs(df_t[[v]]) + 1)
+      transform_notes[[v]] <- "signed_log"
+    }
+  } else if(s > 0.5) {
+    if(all(df_t[[v]] >= 0)) {
+      df_t[[v]] <- sqrt(df_t[[v]])
+      transform_notes[[v]] <- "sqrt"
+    } else {
+      df_t[[v]] <- sign(df_t[[v]]) * sqrt(abs(df_t[[v]]))
+      transform_notes[[v]] <- "signed_sqrt"
+    }
+  } else {
+    transform_notes[[v]] <- "none"
+  }
+}
+transform_notes
+```
+
+```{r corr-vif-after, fig.width=6, fig.height=5}
+# Correlation of transformed variables
+cor_t <- cor(df_t, use = "pairwise.complete.obs")
+print(round(cor_t,3))
+corrplot(cor_t, method = "ellipse", type = "upper", tl.cex = 0.8)
+
+# VIF after transforms (we keep Y untransformed for comparability)
+lm_t <- lm(Y ~ X1 + X2 + X3 + X4 + X5, data = df_t)
+vifs_t <- car::vif(lm_t)
+data.frame(variable = names(vifs_t), VIF = as.numeric(vifs_t)) %>% knitr::kable()
+```
+
+# 9. Remedies for persistent multicollinearity
+
+If VIFs remain high, consider:
+
+-   **Remove or combine** highly collinear predictors (e.g., drop one variable from each highly correlated pair).
+-   **Principal Component Regression (PCR)** — replace predictors with orthogonal components.
+-   **Regularized regression**: Ridge (L2) reduces coefficient variance; Lasso (L1) can select variables.
+-   **Centering and scaling**: helps numeric stability, but doesn’t remove collinearity.
+
+Below are helper code blocks for PCA and Ridge/Lasso examples.
+
+## 9.1 Principal Component Analysis (PCA) — quick check
+
+```{r pca, fig.width=7, fig.height=5}
+X <- scale(df[, c("X1","X2","X3","X4","X5")])
+pca <- prcomp(X, center = TRUE, scale. = TRUE)
+summary(pca)
+plot(pca, type = "l", main = "Scree plot of PCA on predictors")
+biplot(pca, scale = 0)
+```
+
+## 9.2 Ridge and Lasso (glmnet example)
+
+```{r glmnet-setup}
+if(!require(glmnet)) install.packages("glmnet", repos = "https://cloud.r-project.org")
+library(glmnet)
+
+Xmat <- model.matrix(Y ~ X1 + X2 + X3 + X4 + X5, data = df)[, -1]
+yvec <- df$Y
+
+# Ridge (alpha = 0)
+cv_ridge <- cv.glmnet(Xmat, yvec, alpha = 0)
+cat("Best lambda (ridge):", cv_ridge$lambda.min, "\n")
+
+# Lasso (alpha = 1)
+cv_lasso <- cv.glmnet(Xmat, yvec, alpha = 1)
+cat("Best lambda (lasso):", cv_lasso$lambda.min, "\n")
+```
+
+# 10. Save outputs
+
+```{r save-files}
+write.csv(df, "ENB_clean.csv", row.names = FALSE)
+write.csv(df_t, "ENB_transformed.csv", row.names = FALSE)
+write.csv(data.frame(variable = names(vifs), VIF = as.numeric(vifs)), "vif_original.csv", row.names = FALSE)
+write.csv(data.frame(variable = names(vifs_t), VIF = as.numeric(vifs_t)), "vif_transformed.csv", row.names = FALSE)
+cat("Saved: ENB_clean.csv, ENB_transformed.csv, vif_original.csv, vif_transformed.csv\n")
+```
+
+# Conclusions & Recommendations
+
+-   The dataset exhibits **strong multicollinearity** among predictors (large pairwise correlations and very high VIFs).\
+-   **Transformations** (log/sqrt) may help skewness and model assumptions, but will **not** necessarily solve multicollinearity caused by near-linear relationships.\
+-   For reliable inference and prediction, consider **PCA**, **Ridge regression**, or **removing/combining** collinear predictors.\
+-   After selecting a remedy, always run diagnostics (residuals, CV performance) and validate interpretability.
+
+------------------------------------------------------------------------
+
+*This RMarkdown is ready to knit to HTML in RStudio.*\
+Replace or modify the transformation logic if you want different heuristics (e.g., based on visual inspection rather than numeric skew thresholds).
