@@ -1,94 +1,142 @@
-``` {r}
+```{r}
 # 0. Setup ----
 required_pkgs <- c("readr","dplyr","ggplot2","GGally","corrplot",
                    "car","MASS","gridExtra","scales")
-
 missing_pkgs <- required_pkgs[!(required_pkgs %in% installed.packages()[,"Package"])]
 if (length(missing_pkgs)) {
   install.packages(missing_pkgs, repos = "https://cloud.r-project.org")
 }
-
 library(readr); library(dplyr); library(ggplot2); library(GGally); library(corrplot)
 library(car); library(MASS); library(gridExtra); library(scales)
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 data_path <- "ENB.txt"
 ```
 
-``` {r}
+```{r}
 # 1. Read data ----
 raw <- read_table2(data_path, col_names = FALSE, skip = 1, progress = FALSE)
 is_num_col <- sapply(raw, is.numeric)
 df_num <- raw[, is_num_col]
-
 if (ncol(df_num) > 6) {
   df_num <- df_num[ , (ncol(df_num)-5):ncol(df_num)]
 }
-
 colnames(df_num) <- c("X1","X2","X3","X4","X5","Y")
 df <- as.data.frame(df_num)
-
 dim(df)
 head(df)
 ```
 
-``` {r}
+There are 6 variables (5 predictors X1 to X5 and 1 response Y) in the dataset. Total observations are 19735.
+
+```{r}
 # 2. Basic summary / missing values / types ----
 summary_stats <- summary(df)
 summary_stats
-
 sapply(df, function(x) sum(is.na(x)))
 ```
 
-``` {r}
+```{r}
 # 3. Univariate plots (distribution) ----
 plot_list <- list()
-
 for (v in names(df)) {
   p_hist <- ggplot(df, aes_string(x = v)) +
     geom_histogram(aes(y = ..density..), bins = 30, fill = "steelblue", color = "white") +
     geom_density(alpha = 0.3, color = "red") +
     labs(title = paste("Histogram & density -", v)) +
     theme_minimal()
-
   p_box <- ggplot(df, aes_string(y = v)) +
     geom_boxplot(fill = "orange", alpha = 0.7) +
     labs(title = paste("Boxplot -", v)) +
     theme_minimal()
-
   plot_list[[paste0(v,"_hist")]] <- p_hist
   plot_list[[paste0(v,"_box")]] <- p_box
-
   print(p_hist)
   print(p_box)
 }
 ```
 
-``` {r}
+Variables X1, X2,X5 and Y show potential outliers in boxplots. Right skewness is observed in X1,Y distributions. Left skewness is observed in X3 and X5 and
+
+```{r}
 # 4. Pairwise relationships ----
 GGally::ggpairs(df, columns = 1:6, progress = FALSE)
 ```
+#scatter plots 
+```{r}
+# Choose the source matrix
+src <- df  # or use the.data
 
-``` {r}
+# If there is a leading index column, drop it
+if (ncol(src) == 7) src <- src[, 2:7, drop = FALSE]
+
+# Ensure column names exist; assign if needed
+if (is.null(colnames(src)) || !all(colnames(src) %in% c("X1","X2","X3","X4","X5","Y"))) {
+  colnames(src) <- c("X1","X2","X3","X4","X5","Y")
+}
+
+# Set a 2x3 layout for five plots
+op <- par(mfrow = c(2, 3), mar = c(4, 4, 2, 1))
+
+plot(src[,"X1"], src[,"Y"], xlab = "X1: Living room temp (°C)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X1 vs Y")
+abline(lm(Y ~ X1, data = as.data.frame(src)), col = "red", lwd = 2)
+
+plot(src[,"X2"], src[,"Y"], xlab = "X2: Living room humidity (%)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X2 vs Y")
+abline(lm(Y ~ X2, data = as.data.frame(src)), col = "red", lwd = 2)
+
+plot(src[,"X3"], src[,"Y"], xlab = "X3: Office temp (°C)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X3 vs Y")
+abline(lm(Y ~ X3, data = as.data.frame(src)), col = "red", lwd = 2)
+
+plot(src[,"X4"], src[,"Y"], xlab = "X4: Office humidity (%)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X4 vs Y")
+abline(lm(Y ~ X4, data = as.data.frame(src)), col = "red", lwd = 2)
+
+plot(src[,"X5"], src[,"Y"], xlab = "X5: Pressure (mmHg)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X5 vs Y")
+abline(lm(Y ~ X5, data = as.data.frame(src)), col = "red", lwd = 2)
+
+par(op)
+
+
+```
+Variables X1 and X3 show positive linear relationships with Y. Variables X2,X4 and X5 show weak or no linear relationships with Y.
+
+```{r}
 # 5. Correlation matrix ----
 cor_mat <- cor(df, use = "pairwise.complete.obs")
 round(cor_mat, 3)
-
 corrplot::corrplot(cor_mat, method = "ellipse", type = "upper", tl.cex = 0.8)
 ```
 
-``` {r}
+Correlations:
+
+-   Strong positive correlation between X1 and X3 
+
+-   Strong positive correlation between X2 and X4 
+
+-   Moderate negative correlation between X2 and X5 
+
+-   Moderate negative correlation between X4 and X5 
+
+```{r}
 # 6. Multicollinearity checks ----
 X <- as.matrix(df[, c("X1","X2","X3","X4","X5")])
 eigs <- eigen(cor(X))
 cond_number <- sqrt(max(eigs$values) / min(eigs$values))
 cond_number
-
 lm_full <- lm(Y ~ X1 + X2 + X3 + X4 + X5, data = as.data.frame(df_num))
 vifs <- car::vif(lm_full)
 vifs
 ```
-
-``` {r}
+The condition number is 6.542, indicating weak multicollinearity overall in the entire model..
+VIF > 5 already indicates moderate multicollinearity with  X1,X2,X3,X4 individually.
+This also translates to being strong correlations observed earlier then predictors are almost linearly dependent.
+This will cause instability in coefficient estimates and large standard errors.
+Also model may being sensitive to small changes in data.
+Appropriate Transformations are applied next to reduce multicollinearity and improve model stability.
+```{r}
 # 7. Suggested transformations (empirical + Box-Cox for Y) ----
 if (all(df$Y > 0)) {
   bc <- MASS::boxcox(lm_full, plotit = FALSE)
@@ -98,7 +146,6 @@ if (all(df$Y > 0)) {
   lambda_est <- NA
   lambda_est
 }
-
 skewness_num <- function(x) {
   m3 <- mean((x - mean(x))^3)
   s3 <- sd(x)^3
@@ -108,10 +155,9 @@ skews <- sapply(df, skewness_num)
 round(skews, 3)
 ```
 
-``` {r}
+```{r}
 df_trans <- df
 transform_notes <- list()
-
 for (v in names(df)) {
   s <- skewness_num(df[[v]])
   if (s > 1) {
@@ -137,23 +183,14 @@ for (v in names(df)) {
 transform_notes
 ```
 
-``` {r}
+```{r}
 # 8. Re-check correlations & VIF on transformed predictors ----
 X_t <- as.matrix(df_trans[, c("X1","X2","X3","X4","X5")])
 cor_mat_t <- cor(cbind(X_t, Y = df_trans$Y), use = "pairwise.complete.obs")
 round(cor_mat_t, 3)
-
 corrplot::corrplot(cor_mat_t, method = "ellipse", type = "upper", tl.cex = 0.8)
-
 lm_full_t <- lm(Y ~ X1 + X2 + X3 + X4 + X5, data = df_trans)
 vifs_t <- car::vif(lm_full_t)
 vifs_t
 ```
 
-``` {r}
-# 9. Guidance on multicollinearity ----
-cat("- VIF > 5 (or >10) indicates problematic multicollinearity; consider removing or combining predictors,\n",
-    "  or using dimensionality reduction (PCA) or regularized models (Ridge/Lasso).\n",
-    "- If condition number >> 30, consider severe collinearity.\n",
-    "- Consider centering (subtract mean) or scaling; add interaction terms only if justified.\n")
-```
