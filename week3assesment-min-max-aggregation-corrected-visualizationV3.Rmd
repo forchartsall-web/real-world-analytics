@@ -40,7 +40,7 @@ library(corrplot)
 library(GGally)
 
 # Load your file
-df <- as.matrix(read.table("my-data2.txt", header = TRUE))
+df <- as.matrix(read.table("mydata2.txt", header = TRUE))
 
 # Inspect structure
 str(df)

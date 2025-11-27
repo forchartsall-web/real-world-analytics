@@ -61,7 +61,9 @@ Variables X1, X2,X5 and Y show potential outliers in boxplots. Right skewness is
 # 4. Pairwise relationships ----
 GGally::ggpairs(df, columns = 1:6, progress = FALSE)
 ```
-#scatter plots 
+
+#scatter plots
+
 ```{r}
 # Choose the source matrix
 src <- df  # or use the.data
@@ -101,7 +103,8 @@ par(op)
 
 
 ```
-Variables X1 and X3 show positive linear relationships with Y. Variables X2,X4 and X5 show weak or no linear relationships with Y.
+
+Variables X1 and X3 show positive linear relationships with Y. Variables X2,X4 and X5 show weak or non linear relationships with Y.
 
 ```{r}
 # 5. Correlation matrix ----
@@ -112,13 +115,13 @@ corrplot::corrplot(cor_mat, method = "ellipse", type = "upper", tl.cex = 0.8)
 
 Correlations:
 
--   Strong positive correlation between X1 and X3 
+-   Strong positive correlation between X1 and X3
 
--   Strong positive correlation between X2 and X4 
+-   Strong positive correlation between X2 and X4
 
--   Moderate negative correlation between X2 and X5 
+-   Moderate negative correlation between X2 and X5
 
--   Moderate negative correlation between X4 and X5 
+-   Moderate negative correlation between X4 and X5
 
 ```{r}
 # 6. Multicollinearity checks ----
@@ -130,67 +133,149 @@ lm_full <- lm(Y ~ X1 + X2 + X3 + X4 + X5, data = as.data.frame(df_num))
 vifs <- car::vif(lm_full)
 vifs
 ```
-The condition number is 6.542, indicating weak multicollinearity overall in the entire model..
-VIF > 5 already indicates moderate multicollinearity with  X1,X2,X3,X4 individually.
-This also translates to being strong correlations observed earlier then predictors are almost linearly dependent.
-This will cause instability in coefficient estimates and large standard errors.
-Also model may being sensitive to small changes in data.
-Appropriate Transformations are applied next to reduce multicollinearity and improve model stability.
+
+The condition number is 6.542, indicating weak multicollinearity overall in the entire model.. VIF \> 5 already indicates moderate multicollinearity with X1,X2,X3,X4 individually. This also translates to being strong correlations observed earlier then predictors are almost linearly dependent. This will cause instability in coefficient estimates and large standard errors. Also model may being sensitive to small changes in data. Also Variables X1 and X3 show positive linear relationships with Y. Variables X2,X4 and X5 show weak or non linear relationships with Y. Appropriate Transformations are applied next to reduce multicollinearity and improve model stability.
+
+#sample the data
+
 ```{r}
-# 7. Suggested transformations (empirical + Box-Cox for Y) ----
-if (all(df$Y > 0)) {
-  bc <- MASS::boxcox(lm_full, plotit = FALSE)
-  lambda_est <- bc$x[which.max(bc$y)]
-  lambda_est
-} else {
-  lambda_est <- NA
-  lambda_est
-}
-skewness_num <- function(x) {
-  m3 <- mean((x - mean(x))^3)
-  s3 <- sd(x)^3
-  m3 / s3
-}
-skews <- sapply(df, skewness_num)
-round(skews, 3)
+set.seed(226156731)
 ```
 
 ```{r}
-df_trans <- df
-transform_notes <- list()
-for (v in names(df)) {
-  s <- skewness_num(df[[v]])
-  if (s > 1) {
-    if (all(df[[v]] > 0)) {
-      df_trans[[v]] <- log(df[[v]])
-      transform_notes[[v]] <- "log"
-    } else {
-      df_trans[[v]] <- sign(df[[v]]) * log(abs(df[[v]]) + 1)
-      transform_notes[[v]] <- "signed_log"
-    }
-  } else if (s > 0.5) {
-    if (all(df[[v]] >= 0)) {
-      df_trans[[v]] <- sqrt(df[[v]])
-      transform_notes[[v]] <- "sqrt"
-    } else {
-      df_trans[[v]] <- sign(df[[v]]) * sqrt(abs(df[[v]]))
-      transform_notes[[v]] <- "signed_sqrt"
-    }
-  } else {
-    transform_notes[[v]] <- "none"
-  }
+num_row<-650
+```
+
+#read a random sample of 650 rows from the data
+
+```{r}
+my.data <- the.data[sample(1:nrow(df),num_row), 2:7]
+head(my.data)
+```
+
+```{r}
+colnames(my.data)<- c("X1","X2","X3","X4","X5","Y")
+head(my.data)
+```
+
+#min max normalisation and z-score standardisation functions
+
+```{r}
+# minmax normalisation
+minmax <- function(x){
+  (x - min(x))/(max(x)-min(x))
 }
-transform_notes
+
+# z-score standardisation and scaling to unit interval
+unit.z <- function(x){
+  0.15*((x-mean(x))/sd(x)) + 0.5
+}
+```
+
+# Polynomial Transformations
+
+⦁ Polynomial functions $$x^n $$  can have  skewed distributions to look more like normal distributions.
+
+⦁ For $$x^n$$ $$0< n <1 $$ can be used when there are fewer very high values (positive skew), while n \> 1, when there are fewer very low values (negative skew). This transforms work well when the data is already on the unit interval (by applying min-max transformation).
+
+Below is a practical, engineer style solution in R that mimics what you want (optimize over n), but using grid search or optimize() plus a normality criterion such as Shapiro–Wilk p value .
+
+## 1. Define a normality score for a given n
+
+Maximize Shapiro–Wilk pvalue of x^n^ (higher p → closer to normal). Maximizing the Shapiro–Wilk pvalue of xn means: pick the exponent nn that makes the transformed data xn look most like a sample from a normal distribution, according to the Shapiro–Wilk normality test.​
+
+#### What the Shapiro–Wilk pvalue tells you
+
+⦁ The Shapiro–Wilk test checks the null hypothesis “the data come from a normal distribution.”​
+
+⦁ High pvalue (e.g. \> 0.05): data are compatible with normality (no strong evidence against normal).
+
+⦁ Low pvalue (e.g. \< 0.05): data deviate from normality.​ So if you apply the test to the transformed data x^n^ as shapiro.test(x^n^)\$p.value, a larger pvalue means that particular power n ,makes the distribution of xn closer to normal (in the sense of this test).
+
+## 2.Grid search over n
+
+For power transforms, a reasonable range is, e.g., n∈[0,2] or whatever makes sense for your data domain (ensuring xn is defined).
+
+The idea is: the grid is all candidate n, the score is the Shapiro pvalue for xn, and you choose the n that maximizes that score to make xn as close to normal as this test can detect.
+
+#Grid search over with lambda values from 0 to 2 in steps of 0.05 with with Shapiro–Wilk test of normalization
+
+```{r . Grid search over with lambda values from 0 to 2 in steps of 0.05 with Shapiro–Wilk test of normalization  }
+normality_score_sw <- function(x, n) {
+  x_t <- x ^ n
+  # Remove NAs just in case
+  x_t <- x_t[is.finite(x_t)]
+  # Need at least 3 distinct values for a sensible test
+  if (length(unique(x_t)) < 3) return(NA_real_)
+  shapiro.test(x_t)$p.value
+}
+
+find_n_shapiro <- function(x, n_grid = seq(0, 2, by = 0.05)) {
+  scores <- sapply(n_grid, function(n) normality_score_sw(x, n))
+  # Exclude NA scores
+  valid  <- !is.na(scores)
+  if (!any(valid)) stop("No valid n in the grid (all transforms constant or invalid).")
+  best_i <- which.max(scores[valid])
+  list(
+    n_opt   = n_grid[valid][best_i],
+    p_opt   = scores[valid][best_i],
+    grid    = n_grid,
+    scores  = scores
+  )
+}
+
+
+
+```
+
+## 3. Apply transformations
+
+1.  Apply minmax transformation in regard to turn data on unit interval.
+
+2.  Apply polynomial transformation with optimal power scale of x by Shapiro–Wilk normality test.​
+
+```{r transform variables}
+I <- c( 'X1', 'X2', 'X3', 'X4', 'X5','Y')
+variables_to_transform <- my.data[,I]
+head(variables_to_transform)
+variables_to_transform[,"Y"]=minmax(variables_to_transform[,"Y"])+1e-6  #shift to make all values positive
+variables_to_transform[,"X1"]=minmax(variables_to_transform[,"X1"])+1e-6
+variables_to_transform[,"X2"]=minmax(variables_to_transform[,"X2"])+1e-6
+variables_to_transform[,"X3"]=minmax(variables_to_transform[,"X3"])+1e-6
+variables_to_transform[,"X4"]=minmax(variables_to_transform[,"X4"])+1e-6
+variables_to_transform[,"X5"]=minmax(variables_to_transform[,"X5"])+1e-6
+head(variables_to_transform)
+#find optimal n for each variable and transform
+res_swY=find_n_shapiro(variables_to_transform[,"Y"])
+variables_to_transform[,"Y"]=variables_to_transform[,"Y"]^res_swY$n_opt
+res_swX1=find_n_shapiro(variables_to_transform[,"X1"])
+variables_to_transform[,"X1"]=variables_to_transform[,"X1"]^res_swX1$n_opt
+res_swX2=find_n_shapiro(variables_to_transform[,"X2"])
+variables_to_transform[,"X2"]=variables_to_transform[,"X2"]^res_swX2$n_opt
+res_swX3=find_n_shapiro(variables_to_transform[,"X3"])
+variables_to_transform[,"X3"]=variables_to_transform[,"X3"]^res_swX3$n_opt
+res_swX4=find_n_shapiro(variables_to_transform[,"X4"])
+variables_to_transform[,"X4"]=variables_to_transform[,"X4"]^res_swX4$n_opt
+res_swX5=find_n_shapiro(variables_to_transform[,"X5"])
+variables_to_transform[,"X5"]=variables_to_transform[,"X5"]^res_swX5$n_opt
+head(variables_to_transform)
+
+```
+
+#save transformed data
+
+```{r}
+data.transformed=variables_to_transform;
+write.table(data.transformed, "balaji-transformed.txt")  
 ```
 
 ```{r}
 # 8. Re-check correlations & VIF on transformed predictors ----
-X_t <- as.matrix(df_trans[, c("X1","X2","X3","X4","X5")])
-cor_mat_t <- cor(cbind(X_t, Y = df_trans$Y), use = "pairwise.complete.obs")
+X_t <- as.matrix(variables_to_transform[, c("X1","X2","X3","X4","X5")])
+cor_mat_t <- cor(cbind(X_t, Y = variables_to_transform[ , "Y"]), use = "pairwise.complete.obs")
 round(cor_mat_t, 3)
 corrplot::corrplot(cor_mat_t, method = "ellipse", type = "upper", tl.cex = 0.8)
-lm_full_t <- lm(Y ~ X1 + X2 + X3 + X4 + X5, data = df_trans)
+lm_full_t <- lm(Y ~ X1 + X2 + X3 + X4 + X5, data = as.data.frame(variables_to_transform))
 vifs_t <- car::vif(lm_full_t)
 vifs_t
 ```
-

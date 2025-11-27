@@ -91,7 +91,46 @@ grid.arrange(plots$X1_h, plots$X1_b,
 ```{r pairs, fig.height=8, fig.width=8}
 GGally::ggpairs(df, columns = 1:6, progress = FALSE)
 ```
+#scatter plots 
+```{r}
+# Choose the source matrix
+src <- df  # or use the.data
 
+# If there is a leading index column, drop it
+if (ncol(src) == 7) src <- src[, 2:7, drop = FALSE]
+
+# Ensure column names exist; assign if needed
+if (is.null(colnames(src)) || !all(colnames(src) %in% c("X1","X2","X3","X4","X5","Y"))) {
+  colnames(src) <- c("X1","X2","X3","X4","X5","Y")
+}
+
+# Set a 2x3 layout for five plots
+op <- par(mfrow = c(2, 3), mar = c(4, 4, 2, 1))
+
+plot(src[,"X1"], src[,"Y"], xlab = "X1: Living room temp (°C)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X1 vs Y")
+abline(lm(Y ~ X1, data = as.data.frame(src)), col = "red", lwd = 2)
+
+plot(src[,"X2"], src[,"Y"], xlab = "X2: Living room humidity (%)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X2 vs Y")
+abline(lm(Y ~ X2, data = as.data.frame(src)), col = "red", lwd = 2)
+
+plot(src[,"X3"], src[,"Y"], xlab = "X3: Office temp (°C)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X3 vs Y")
+abline(lm(Y ~ X3, data = as.data.frame(src)), col = "red", lwd = 2)
+
+plot(src[,"X4"], src[,"Y"], xlab = "X4: Office humidity (%)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X4 vs Y")
+abline(lm(Y ~ X4, data = as.data.frame(src)), col = "red", lwd = 2)
+
+plot(src[,"X5"], src[,"Y"], xlab = "X5: Pressure (mmHg)", ylab = "Y: Appliances (Wh)",
+     pch = 19, col = rgb(0,0,1,0.4), main = "X5 vs Y")
+abline(lm(Y ~ X5, data = as.data.frame(src)), col = "red", lwd = 2)
+
+par(op)
+
+
+```
 # 5. Correlation matrix
 
 ```{r corrplot, fig.width=6, fig.height=5}
