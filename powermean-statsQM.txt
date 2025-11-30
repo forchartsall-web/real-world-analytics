@@ -1,5 +1,5 @@
-RMSE 1.23943902372122
-Av. abs error 1.23875967770805
+RMSE 1.23959205865586
+Av. abs error 1.23890802892038
 Pearson correlation NA
 Spearman correlation NA
 i w_i 

@@ -55,7 +55,7 @@ for (v in names(df)) {
 }
 ```
 
-Variables X1, X2,X5 and Y show potential outliers in boxplots. Right skewness is observed in X1,Y distributions. Left skewness is observed in X3 and X5 and
+Variables X1, X2,X5 and Y show potential outliers in boxplots. Right skewness is observed in X1,Y distributions. Left skewness is observed in X3 and X5.
 
 ```{r}
 # 4. Pairwise relationships ----
@@ -136,7 +136,15 @@ vifs
 
 The condition number is 6.542, indicating weak multicollinearity overall in the entire model.. VIF \> 5 already indicates moderate multicollinearity with X1,X2,X3,X4 individually. This also translates to being strong correlations observed earlier then predictors are almost linearly dependent. This will cause instability in coefficient estimates and large standard errors. Also model may being sensitive to small changes in data. Also Variables X1 and X3 show positive linear relationships with Y. Variables X2,X4 and X5 show weak or non linear relationships with Y. Appropriate Transformations are applied next to reduce multicollinearity and improve model stability.
 
-#sample the data
+# Sample the data
+
+Data read from ENB.txt as df is used to sample with 650 rows into my.data dataframe. This sample is regarded for further aggregation model fit with .
+
+1.  Address skewness by appropriate transformation
+
+2.  Fit aggregation models : Linear problem is solved to find weights of predictor variables. lpSolve library used (source: AggWaFit718.R).
+
+#### 
 
 ```{r}
 set.seed(226156731)
@@ -158,7 +166,7 @@ colnames(my.data)<- c("X1","X2","X3","X4","X5","Y")
 head(my.data)
 ```
 
-#min max normalisation and z-score standardisation functions
+#min max normalization and z-score standardization functions
 
 ```{r}
 # minmax normalisation
@@ -174,15 +182,15 @@ unit.z <- function(x){
 
 # Polynomial Transformations
 
-⦁ Polynomial functions $$x^n $$  can have  skewed distributions to look more like normal distributions.
+⦁ Polynomial functions x^n^  can have  skewed distributions to look more like normal distributions.
 
-⦁ For $$x^n$$ $$0< n <1 $$ can be used when there are fewer very high values (positive skew), while n \> 1, when there are fewer very low values (negative skew). This transforms work well when the data is already on the unit interval (by applying min-max transformation).
+⦁ For x^n^ ; 0\<n\<1 can be used when there are fewer very high values (positive skew), while n \> 1, when there are fewer very low values (negative skew). This transforms work well when the data is already on the unit interval (by applying min-max transformation).
 
 Below is a practical, engineer style solution in R that mimics what you want (optimize over n), but using grid search or optimize() plus a normality criterion such as Shapiro–Wilk p value .
 
 ## 1. Define a normality score for a given n
 
-Maximize Shapiro–Wilk pvalue of x^n^ (higher p → closer to normal). Maximizing the Shapiro–Wilk pvalue of xn means: pick the exponent nn that makes the transformed data xn look most like a sample from a normal distribution, according to the Shapiro–Wilk normality test.​
+Maximize Shapiro–Wilk pvalue of x^n^ (higher p → closer to normal). It means, pick the exponent n that makes the transformed data x^n^ look most like a sample from a normal distribution, according to the Shapiro–Wilk normality test.​
 
 #### What the Shapiro–Wilk pvalue tells you
 
@@ -190,13 +198,13 @@ Maximize Shapiro–Wilk pvalue of x^n^ (higher p → closer to normal). Maximi
 
 ⦁ High pvalue (e.g. \> 0.05): data are compatible with normality (no strong evidence against normal).
 
-⦁ Low pvalue (e.g. \< 0.05): data deviate from normality.​ So if you apply the test to the transformed data x^n^ as shapiro.test(x^n^)\$p.value, a larger pvalue means that particular power n ,makes the distribution of xn closer to normal (in the sense of this test).
+⦁ Low pvalue (e.g. \< 0.05): data deviate from normality.​ So if you apply the test to the transformed data x^n^ as shapiro.test(x^n^)\$p.value, a larger pvalue means that particular power n ,makes the distribution of x^n^ closer to normal (in the sense of this test).
 
-## 2.Grid search over n
+## 2.Grid search over  n∈[0,2]
 
-For power transforms, a reasonable range is, e.g., n∈[0,2] or whatever makes sense for your data domain (ensuring xn is defined).
+For power transforms, a reasonable range is, e.g., n∈[0,2] or whatever makes sense for your data domain (ensuring x^n^ is defined).
 
-The idea is: the grid is all candidate n, the score is the Shapiro pvalue for xn, and you choose the n that maximizes that score to make xn as close to normal as this test can detect.
+The idea is: the grid is all candidate n, the score is the Shapiro pvalue for x^n^, and you choose the n that maximizes that score to make x^n^ as close to normal as this test can detect.
 
 #Grid search over with lambda values from 0 to 2 in steps of 0.05 with with Shapiro–Wilk test of normalization
 
@@ -230,22 +238,12 @@ find_n_shapiro <- function(x, n_grid = seq(0, 2, by = 0.05)) {
 
 ## 3. Apply transformations
 
-1.  Apply minmax transformation in regard to turn data on unit interval.
-
-2.  Apply polynomial transformation with optimal power scale of x by Shapiro–Wilk normality test.​
+1.  Apply polynomial transformation with optimal power scale of x by Shapiro–Wilk normality test.​
 
 ```{r transform variables}
 I <- c( 'X1', 'X2', 'X3', 'X4', 'X5','Y')
 variables_to_transform <- my.data[,I]
 head(variables_to_transform)
-variables_to_transform[,"Y"]=minmax(variables_to_transform[,"Y"])+1e-6  #shift to make all values positive
-variables_to_transform[,"X1"]=minmax(variables_to_transform[,"X1"])+1e-6
-variables_to_transform[,"X2"]=minmax(variables_to_transform[,"X2"])+1e-6
-variables_to_transform[,"X3"]=minmax(variables_to_transform[,"X3"])+1e-6
-variables_to_transform[,"X4"]=minmax(variables_to_transform[,"X4"])+1e-6
-variables_to_transform[,"X5"]=minmax(variables_to_transform[,"X5"])+1e-6
-head(variables_to_transform)
-#find optimal n for each variable and transform
 res_swY=find_n_shapiro(variables_to_transform[,"Y"])
 variables_to_transform[,"Y"]=variables_to_transform[,"Y"]^res_swY$n_opt
 res_swX1=find_n_shapiro(variables_to_transform[,"X1"])
@@ -262,6 +260,16 @@ head(variables_to_transform)
 
 ```
 
+#plot
+
+```{r}
+hist(variables_to_transform[, "Y"], main = "Y", xlab = "Y")
+```
+
+```{r}
+for (k in paste0("X", 1:5)) { hist(variables_to_transform[, k], main = k, xlab = k) }
+```
+
 #save transformed data
 
 ```{r}
@@ -270,12 +278,107 @@ write.table(data.transformed, "balaji-transformed.txt")
 ```
 
 ```{r}
-# 8. Re-check correlations & VIF on transformed predictors ----
-X_t <- as.matrix(variables_to_transform[, c("X1","X2","X3","X4","X5")])
-cor_mat_t <- cor(cbind(X_t, Y = variables_to_transform[ , "Y"]), use = "pairwise.complete.obs")
-round(cor_mat_t, 3)
-corrplot::corrplot(cor_mat_t, method = "ellipse", type = "upper", tl.cex = 0.8)
-lm_full_t <- lm(Y ~ X1 + X2 + X3 + X4 + X5, data = as.data.frame(variables_to_transform))
-vifs_t <- car::vif(lm_full_t)
-vifs_t
+source("AggWaFit718.R")
+```
+
+########################################## 
+
+#T3 - Build models and investigate \##########################################
+
+```{r}
+source("AggWaFit718.R")
+```
+
+```{r}
+data.transformed_copy <- data.transformed
+  #as.matrix(read.table("balaji-transformed.txt"))
+```
+
+```{r Avoid zeros in min-max scaled data for HM and GM.. Shift or rescale the data so the minimum becomes a small positive number}
+epsilon <- 1e-6
+data.transformed_copy[data.transformed_copy == 0] <- epsilon
+
+```
+
+# Get weights for Weighted Arithmetic Mean with fit.QAM()
+
+```{r}
+fit.QAM(data.transformed_copy,output.1="WAM.txt",stats.1 = "WAM-stats.txt")
+```
+
+```{r}
+data.transformed_copy[1,1]
+```
+
+```{r}
+length(data.transformed[,6])
+  
+```
+
+# Get weights for Power Mean p=0.5 and p=2 with fit.QAM()
+
+```{r}
+fit.QAM(data.transformed_copy,output.1="powermean0.5.txt",stats.1 = "powermean-stats0.5.txt",g=PM05,g.inv=invPM05)
+fit.QAM(data.transformed_copy,output.1="powermeanQM.txt",stats.1 = "powermean-statsQM.txt",g=QM,g.inv=invQM)
+fit.QAM(data.transformed_copy,output.1="powermeanHM.txt",stats.1 = "powermean-statsHM.txt",g=HM,g.inv=invHM)
+fit.QAM(data.transformed_copy,output.1="powermeanGM.txt",stats.1 = "powermean-statsGM.txt",g=GM,g.inv=invGM)
+```
+
+# Get weights for Ordered Weighted Average with fit.OWA()
+
+```{r}
+fit.OWA(data.transformed_copy,output.1="OWA.txt",stats.1 = "OWA-stats.txt")
+```
+
+# Get weights for Choquet Integral with fit.choquet() - Optional
+
+```{r}
+fit.choquet(data.transformed_copy,output.1="choquet.txt",stats.1 = "choquet-stats.txt")
+```
+
+####################################### 
+
+#T4 - Use Model for Prediction \#######################################
+
+```{r imort new data}
+# Your data
+new.data <- c(23.5, 35.87125, 24.89, 32.93, 758.55)
+
+# Create a matrix with 1 row and 5 columns
+new.data <- matrix(new.data, nrow = 1)
+
+# Assign column names
+colnames(new.data) <- c("X1", "X2", "X3", "X4", "X5")
+
+# Check result
+new.data
+
+```
+
+```{r transform new data}
+new_input_to_transform <- new.data
+new_input_to_transform[,"X1"]=new_input_to_transform[,"X1"]^res_swX1$n_opt
+new_input_to_transform[,"X2"]=new_input_to_transform[,"X2"]^res_swX2$n_opt
+new_input_to_transform[,"X3"]=new_input_to_transform[,"X3"]^res_swX3$n_opt
+new_input_to_transform[,"X4"]=new_input_to_transform[,"X4"]^res_swX4$n_opt
+new_input_to_transform[,"X5"]=new_input_to_transform[,"X5"]^res_swX5$n_opt
+new_input_to_transform
+```
+
+```{r predict Y using QM model}
+# Load the weights from the best model (QM in this case
+weights_QM <- c(0.934071643855891,0, 0.0659283561441099,0,0)
+# call the function PM
+result=PM(new_input_to_transform,weights_QM,-1)
+  #QAM(  x = new_input_to_transform,  w = weights_QM,  g = QM,  g.inv = invQM)
+
+
+
+```
+
+```{r reverse transform Y to original scale}
+result_scaled=result^(1/res_swY$n_opt)
+result_scaled
+# Reverse min-max scaling for Y
+
 ```
