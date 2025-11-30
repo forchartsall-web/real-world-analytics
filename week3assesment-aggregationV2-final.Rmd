@@ -170,30 +170,6 @@ unit.z <- function(x){
 ```{r}
 library(MASS)
 
-boxcox_transform <- function(x, lambda_seq = seq(-2, 2, by = 0.1), plot = FALSE) {
-  # x: numeric vector (positive values for Box–Cox)
-  # lambda_seq: grid of lambda values to search over
-  # plot: whether to show the boxcox profile plot
-  
-  # Fit Box–Cox over an intercept-only model
-  bc <- boxcox(x ~ 1, lambda = lambda_seq, plotit = plot)
-  
-  # Choose lambda that maximizes log-likelihood
-  lambda_hat <- bc$x[which.max(bc$y)]
-  
-  # Apply the transformation
-  if (abs(lambda_hat) < 1e-6) {
-    x_bc <- log(x)
-  } else {
-    x_bc <- (x^lambda_hat - 1) / lambda_hat
-  }
-  
-  # Return both transformed data and chosen lambda
-  list(
-    x_bc  = x_bc,
-    lambda = lambda_hat
-  )
-}
 
 ```
 ```{r . Grid search over with lambda values from -2 to 2 in steps of 0.1 with Shapiro–Wilk test of normalization  }
@@ -284,7 +260,7 @@ data.transformed_copy[data.transformed_copy == 0] <- epsilon
 ```
 # Get weights for Weighted Arithmetic Mean with fit.QAM() 
 ```{r}
-fit.QAM(data.transformed_copy,output.1="WAM3.txt",stats.1 = "WAM-stats3.txt")
+fit.QAM(data.transformed_copy,output.1="WAM.txt",stats.1 = "WAM-stats.txt")
 ```
 ```{r}
 data.transformed_copy[1,1]
@@ -299,23 +275,23 @@ length(data.transformed[,6])
 
 # Get weights for Power Mean p=0.5 and p=2 with fit.QAM()
 ```{r}
-fit.QAM(data.transformed_copy,output.1="powermean3.txt",stats.1 = "powermean-stats3.txt",g=PM05,g.inv=invPM05)
-fit.QAM(data.transformed_copy,output.1="powermean32.txt",stats.1 = "powermean-stats32.txt",g=QM,g.inv=invQM)
-fit.QAM(data.transformed_copy,output.1="powermean3-1.txt",stats.1 = "powermean-stats3-1.txt",g=HM,g.inv=invHM)
-fit.QAM(data.transformed_copy,output.1="powermean30.txt",stats.1 = "powermean-stats30.txt",g=GM,g.inv=invGM)
+fit.QAM(data.transformed_copy,output.1="powermean0.5.txt",stats.1 = "powermean-stats0.5.txt",g=PM05,g.inv=invPM05)
+fit.QAM(data.transformed_copy,output.1="powermeanQM.txt",stats.1 = "powermean-statsQM.txt",g=QM,g.inv=invQM)
+fit.QAM(data.transformed_copy,output.1="powermeanHM.txt",stats.1 = "powermean-statsHM.txt",g=HM,g.inv=invHM)
+fit.QAM(data.transformed_copy,output.1="powermeanGM.txt",stats.1 = "powermean-statsGM.txt",g=GM,g.inv=invGM)
 ```
 
 
 
 # Get weights for Ordered Weighted Average with fit.OWA()
 ```{r}
-fit.OWA(data.transformed_copy,output.1="OWA3.txt",stats.1 = "OWA-stats3.txt")
+fit.OWA(data.transformed_copy,output.1="OWA.txt",stats.1 = "OWA-stats.txt")
 ```
 
 
 # Get weights for Choquet Integral with fit.choquet() - Optional
 ```{r}
-fit.choquet(data.transformed_copy,output.1="choquet3.txt",stats.1 = "choquet-stats3.txt")
+fit.choquet(data.transformed_copy,output.1="choquet.txt",stats.1 = "choquet-stats.txt")
 ```
 
 #######################################

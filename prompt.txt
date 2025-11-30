@@ -1,0 +1,16 @@
+context: aggregation model analysis: I have attached R notebook html version and data ENB.txt which it has processed. 
+
+Input: ENB.txt It regards SIG AT2 Q-1.pdf for procedure and data structure. 
+
+Aggregation Model : It is considering weighted aggregation, ordered weighted aggregation, Quassi-arithmetic aggregation, choquet Integral, Geometric weighted aggregation. After finding optimum model based on metrics and statics like RMSE and correlations, the test data is evaluated for Appliances energy consumption (Column Y)
+
+role : Assume data analyst role to analyse all models (their weightages, predictor variable signified, overfitting or biasing ) and compare model
+
+task:  analyse and describe  all models (their weightages, predictor variable signified, overfitting or biasing ) and compare metrics and stats and discribe them. Find optimum model.
+
+stats and metrics provided : text files which list metrics RMSE ,Av. abs error ,
+Pearson correlation ,
+Spearman correlation ,
+Orness 
+
+audience : Business stakeholders looking for best model to employ.
