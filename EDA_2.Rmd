@@ -340,6 +340,8 @@ length(data.transformed[,6])
   
 ```
 
+![](WAM.png)
+
 ## Get weights for Power Mean p=0.5 and p=2 (Weighted Quadratic Mean), p=-1 (Weighted Harmonic Mean),p=0 (Weighted Geometric Mean) with fit.QAM()
 
 ```{r}
@@ -349,11 +351,21 @@ fit.QAM(data.transformed_copy,output.1="powermeanHM.txt",stats.1 = "powermean-st
 fit.QAM(data.transformed_copy,output.1="powermeanGM.txt",stats.1 = "powermean-statsGM.txt",g=GM,g.inv=invGM)
 ```
 
+![Weighted Power Mean](PM0.5.png "Weighted Power Mean")
+
+![Weighted Power Mean QM Quadratic Mean)](QM.png "Weighted Power Mean QM Quadratic Mean)")
+
+![Weighted Power Mean GM Geometric Mean)](gm.png "Weighted Power Mean GM Geometric Mean)"){#Weighted Power Mean GM Geometric Mean)}
+
+![Weighted Power Mean HM Harmonic Mean)](HM.png "Weighted Power Mean HM Harmonic Mean)")
+
 ## Get weights for Ordered Weighted Average with fit.OWA()
 
 ```{r}
 fit.OWA(data.transformed_copy,output.1="OWA.txt",stats.1 = "OWA-stats.txt")
 ```
+
+![Ordered Weighted Averaging OWA](OWA.png "Ordered Weighted Averaging OWA")
 
 ## Get weights for Choquet Integral with fit.choquet() 
 
@@ -361,7 +373,36 @@ fit.OWA(data.transformed_copy,output.1="OWA.txt",stats.1 = "OWA-stats.txt")
 fit.choquet(data.transformed_copy,output.1="choquet.txt",stats.1 = "choquet-stats.txt")
 ```
 
-####################################### 
+####################################### ![Choquet Integral](choquet.png "Choquet Integral")
+
+#  Interpretation and comparison
+
+-   All models except PowerMean QM show very similar predictive accuracy RMSE 0.0413) and correlation values 0.200.22 Pearson).
+
+-   WAM, OWA, and Choquet have almost the same error metrics, but Choquet shows higher orness, capturing importance of variable 5 as well, unlike others that mostly focus on variable 1
+
+-    Variable 1 Living room temperature) is consistently the dominant predictor across all
+    models, with variable 3 Office room temperature) having minor influence. Choquet uniquely assigns significant importance to variable 5 Pressure), suggesting it captures interaction effects better.
+
+-   The OWA model shows low orness, indicating strong bias toward minimum values, which may limit flexibility
+
+-   Choquet Integral model balances variable contributions, including pressure X5, suggesting better modeling of interaction effects without overfitting.
+
+-    Power Mean HM strongly biases towards variable 1, somewhat ignoring pressure and
+    humidity variables, but correlation metrics indicate better predictive fit. It may be simpler and less flexible but not necessarily overfitting given improved correlations.
+
+#  Optimum Model Recommendation
+
+-    Weighted Power Mean HM outperforms marginally in all error and correlation metrics, indicating better fit on the data
+
+-    Choquet Integral provides richer interpretability with balanced importance between
+    temperature and pressure, reflecting nuanced interactions
+
+-    For purely predictive performance and simplicity, Weighted Power Mean HM is optimal
+
+-   For interpretability and capturing interaction effects, Choquet Integral is preferable.
+
+Overall, the Weighted Power Mean HM should be the first choice focusing on prediction accuracy, while Choquet Integral suits those valuing variable interaction understanding alongside good accuracy
 
 # Use Model for Prediction
 
