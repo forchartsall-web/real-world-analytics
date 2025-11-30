@@ -1,3 +1,7 @@
+---
+bibliography: references.bib
+---
+
 ```{r}
 # 0. Setup ----
 required_pkgs <- c("readr","dplyr","ggplot2","GGally","corrplot",
@@ -142,7 +146,7 @@ Data read from ENB.txt as df is used to sample with 650 rows into my.data datafr
 
 1.  Address skewness by appropriate transformation
 
-2.  Fit aggregation models : Linear problem is solved to find weights of predictor variables. lpSolve library used (source: AggWaFit718.R).
+2.  Fit aggregation models : Linear programming is performed to find weights of predictor variables. lpSolve library used (source: AggWaFit718.R) to obtain optimum weights for respective aggregation.
 
 #### 
 
@@ -198,13 +202,13 @@ Maximize Shapiro–Wilk pvalue of x^n^ (higher p → closer to normal). It me
 
 ⦁ High pvalue (e.g. \> 0.05): data are compatible with normality (no strong evidence against normal).
 
-⦁ Low pvalue (e.g. \< 0.05): data deviate from normality.​ So if you apply the test to the transformed data x^n^ as shapiro.test(x^n^)\$p.value, a larger pvalue means that particular power n ,makes the distribution of x^n^ closer to normal (in the sense of this test).
+⦁ Low pvalue (e.g. \< 0.05): data deviate from normality.​ So if you apply the test to the transformed data x^n^ as shapiro.test(x^n^)\$p.value, a larger pvalue means that particular power n ,makes the distribution of x^n^ closer to normal (in the sense of this test). [@stats]
 
 ## 2.Grid search over  n∈[0,2]
 
 For power transforms, a reasonable range is, e.g., n∈[0,2] or whatever makes sense for your data domain (ensuring x^n^ is defined).
 
-The idea is: the grid is all candidate n, the score is the Shapiro pvalue for x^n^, and you choose the n that maximizes that score to make x^n^ as close to normal as this test can detect.
+The idea is the grid is all candidate n, the score is the Shapiro pvalue for x^n^, and you choose the n that maximizes that score to make x^n^ as close to normal as this test can detect.
 
 #Grid search over with lambda values from 0 to 2 in steps of 0.05 with with Shapiro–Wilk test of normalization
 
@@ -249,7 +253,7 @@ variables_to_transform[,"Y"]=variables_to_transform[,"Y"]^res_swY$n_opt
 res_swX1=find_n_shapiro(variables_to_transform[,"X1"])
 variables_to_transform[,"X1"]=variables_to_transform[,"X1"]^res_swX1$n_opt
 res_swX2=find_n_shapiro(variables_to_transform[,"X2"])
-variables_to_transform[,"X2"]=variables_to_transform[,"X2"]^res_swX2$n_opt
+variables_to_transform[,"X2"]=variables_to_transform[,"X2"]^X2$n_opt
 res_swX3=find_n_shapiro(variables_to_transform[,"X3"])
 variables_to_transform[,"X3"]=variables_to_transform[,"X3"]^res_swX3$n_opt
 res_swX4=find_n_shapiro(variables_to_transform[,"X4"])
@@ -260,7 +264,22 @@ head(variables_to_transform)
 
 ```
 
-#plot
+#### Table of power applied to variables
+
+| Variable | Power  |  p value of normality test |
+|----------|--------|----------------------------|
+| X1       | 0.05   | 3.94e-07                   |
+| X2       | 1.75   | 0.07                       |
+| X3       | 0.65   | 5.35e-05                   |
+| X4       | 0.05   | 1.52e-09                   |
+| X5       | 2      | 6.11e-05                   |
+| Y        | 0.05   | 6.11e-05                   |
+
+: Powers applied to variables
+
+Predictor variables are transformed to be near normal distribution without changing their characteristics
+
+## Plots of transformed data
 
 ```{r}
 hist(variables_to_transform[, "Y"], main = "Y", xlab = "Y")
@@ -270,12 +289,16 @@ hist(variables_to_transform[, "Y"], main = "Y", xlab = "Y")
 for (k in paste0("X", 1:5)) { hist(variables_to_transform[, k], main = k, xlab = k) }
 ```
 
-#save transformed data
+# save transformed data
 
 ```{r}
 data.transformed=variables_to_transform;
 write.table(data.transformed, "balaji-transformed.txt")  
 ```
+
+# source AggWaFit718.R 
+
+This is the library of various aggregations and weight fitting method
 
 ```{r}
 source("AggWaFit718.R")
@@ -283,7 +306,7 @@ source("AggWaFit718.R")
 
 ########################################## 
 
-#T3 - Build models and investigate \##########################################
+# Build models and investigate 
 
 ```{r}
 source("AggWaFit718.R")
@@ -294,13 +317,15 @@ data.transformed_copy <- data.transformed
   #as.matrix(read.table("balaji-transformed.txt"))
 ```
 
-```{r Avoid zeros in min-max scaled data for HM and GM.. Shift or rescale the data so the minimum becomes a small positive number}
+Avoid zeros in scaled data for HM and GM. Shift or rescale the data so the minimum becomes a small positive number
+
+```{r Avoid zeros in scaled data for HM and GM.. Shift or rescale the data so the minimum becomes a small positive number}
 epsilon <- 1e-6
 data.transformed_copy[data.transformed_copy == 0] <- epsilon
 
 ```
 
-# Get weights for Weighted Arithmetic Mean with fit.QAM()
+## Get weights for Weighted Arithmetic Mean with fit.QAM()
 
 ```{r}
 fit.QAM(data.transformed_copy,output.1="WAM.txt",stats.1 = "WAM-stats.txt")
@@ -315,7 +340,7 @@ length(data.transformed[,6])
   
 ```
 
-# Get weights for Power Mean p=0.5 and p=2 with fit.QAM()
+## Get weights for Power Mean p=0.5 and p=2 (Weighted Quadratic Mean), p=-1 (Weighted Harmonic Mean),p=0 (Weighted Geometric Mean) with fit.QAM()
 
 ```{r}
 fit.QAM(data.transformed_copy,output.1="powermean0.5.txt",stats.1 = "powermean-stats0.5.txt",g=PM05,g.inv=invPM05)
@@ -324,13 +349,13 @@ fit.QAM(data.transformed_copy,output.1="powermeanHM.txt",stats.1 = "powermean-st
 fit.QAM(data.transformed_copy,output.1="powermeanGM.txt",stats.1 = "powermean-statsGM.txt",g=GM,g.inv=invGM)
 ```
 
-# Get weights for Ordered Weighted Average with fit.OWA()
+## Get weights for Ordered Weighted Average with fit.OWA()
 
 ```{r}
 fit.OWA(data.transformed_copy,output.1="OWA.txt",stats.1 = "OWA-stats.txt")
 ```
 
-# Get weights for Choquet Integral with fit.choquet() - Optional
+## Get weights for Choquet Integral with fit.choquet() 
 
 ```{r}
 fit.choquet(data.transformed_copy,output.1="choquet.txt",stats.1 = "choquet-stats.txt")
@@ -338,7 +363,7 @@ fit.choquet(data.transformed_copy,output.1="choquet.txt",stats.1 = "choquet-stat
 
 ####################################### 
 
-#T4 - Use Model for Prediction \#######################################
+# Use Model for Prediction
 
 ```{r imort new data}
 # Your data
