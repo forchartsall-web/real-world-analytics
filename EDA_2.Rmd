@@ -45,6 +45,8 @@ summary_stats
 
 ## Univariate Analysis :
 
+### Histogram and Boxplot
+
 ```{r}
 # 3. Univariate plots (distribution) ----
 plot_list <- list()
@@ -71,6 +73,10 @@ Variables X1, X2,X5 and Y show potential outliers in boxplots. Right skewness is
 # 4. Pairwise relationships ----
 GGally::ggpairs(df, columns = 1:6, progress = FALSE)
 ```
+
+## Bivariate Analysis : 
+
+### Scatter Plots with regression lines
 
 ```{r}
 # Choose the source matrix
@@ -114,6 +120,8 @@ par(op)
 
 Variables X1 and X3 show positive linear relationships with Y. Variables X2,X4 and X5 show weak or non linear relationships with Y.
 
+## Correlation Analysis :
+
 ```{r}
 # 5. Correlation matrix ----
 cor_mat <- cor(df, use = "pairwise.complete.obs")
@@ -144,7 +152,7 @@ vifs
 
 The condition number is 6.542, indicating weak multicollinearity overall in the entire model.. VIF \> 5 already indicates moderate multicollinearity with X1,X2,X3,X4 individually. This also translates to being strong correlations observed earlier then predictors are almost linearly dependent. This will cause instability in coefficient estimates and large standard errors. Also model may being sensitive to small changes in data. Also Variables X1 and X3 show positive linear relationships with Y. Variables X2,X4 and X5 show weak or non linear relationships with Y. Appropriate Transformations are applied next to reduce multicollinearity and improve model stability.
 
-# Sample the data
+# Sample the data and aggregation
 
 Data read from ENB.txt as df is used to sample with 650 rows into my.data dataframe. This sample is regarded for further aggregation model fit with .
 
