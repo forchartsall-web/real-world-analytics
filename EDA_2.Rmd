@@ -1,5 +1,8 @@
 ---
 bibliography: references.bib
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r}
@@ -74,7 +77,7 @@ Variables X1, X2,X5 and Y show potential outliers in boxplots. Right skewness is
 GGally::ggpairs(df, columns = 1:6, progress = FALSE)
 ```
 
-## Bivariate Analysis : 
+## Bivariate Analysis :
 
 ### Scatter Plots with regression lines
 
@@ -173,7 +176,8 @@ num_row<-650
 #read a random sample of 650 rows from the data
 
 ```{r}
-my.data <- the.data[sample(1:nrow(df),num_row), 2:7]
+the.data <- as.matrix(read.table("ENB.txt")) 
+my.data <- the.data[sample(1:nrow(the.data),num_row), 2:7]
 head(my.data)
 ```
 
@@ -192,7 +196,7 @@ minmax <- function(x){
 
 # z-score standardisation and scaling to unit interval
 unit.z <- function(x){
-  0.15*((x-mean(x))/sd(x)) + 0.5
+  ((x-mean(x))/sd(x))
 }
 ```
 
