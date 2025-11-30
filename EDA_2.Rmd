@@ -32,12 +32,18 @@ head(df)
 
 There are 6 variables (5 predictors X1 to X5 and 1 response Y) in the dataset. Total observations are 19735.
 
+# Statistical Summary
+
 ```{r}
 # 2. Basic summary / missing values / types ----
 summary_stats <- summary(df)
 summary_stats
-sapply(df, function(x) sum(is.na(x)))
+#sapply(df, function(x) sum(is.na(x)))
 ```
+
+# Exploratory Data Analysis
+
+## Univariate Analysis :
 
 ```{r}
 # 3. Univariate plots (distribution) ----
@@ -65,8 +71,6 @@ Variables X1, X2,X5 and Y show potential outliers in boxplots. Right skewness is
 # 4. Pairwise relationships ----
 GGally::ggpairs(df, columns = 1:6, progress = FALSE)
 ```
-
-#scatter plots
 
 ```{r}
 # Choose the source matrix
@@ -266,14 +270,14 @@ head(variables_to_transform)
 
 #### Table of power applied to variables
 
-| Variable | Power  |  p value of normality test |
-|----------|--------|----------------------------|
-| X1       | 0.05   | 3.94e-07                   |
-| X2       | 1.75   | 0.07                       |
-| X3       | 0.65   | 5.35e-05                   |
-| X4       | 0.05   | 1.52e-09                   |
-| X5       | 2      | 6.11e-05                   |
-| Y        | 0.05   | 6.11e-05                   |
+| Variable | Power | p value of normality test |
+|----------|-------|---------------------------|
+| X1       | 0.05  | 3.94e-07                  |
+| X2       | 1.75  | 0.07                      |
+| X3       | 0.65  | 5.35e-05                  |
+| X4       | 0.05  | 1.52e-09                  |
+| X5       | 2     | 6.11e-05                  |
+| Y        | 0.05  | 6.11e-05                  |
 
 : Powers applied to variables
 
@@ -296,7 +300,7 @@ data.transformed=variables_to_transform;
 write.table(data.transformed, "balaji-transformed.txt")  
 ```
 
-# source AggWaFit718.R 
+# source AggWaFit718.R
 
 This is the library of various aggregations and weight fitting method
 
@@ -306,7 +310,7 @@ source("AggWaFit718.R")
 
 ########################################## 
 
-# Build models and investigate 
+# Build models and investigate
 
 ```{r}
 source("AggWaFit718.R")
@@ -367,7 +371,7 @@ fit.OWA(data.transformed_copy,output.1="OWA.txt",stats.1 = "OWA-stats.txt")
 
 ![Ordered Weighted Averaging OWA](OWA.png "Ordered Weighted Averaging OWA")
 
-## Get weights for Choquet Integral with fit.choquet() 
+## Get weights for Choquet Integral with fit.choquet()
 
 ```{r}
 fit.choquet(data.transformed_copy,output.1="choquet.txt",stats.1 = "choquet-stats.txt")
@@ -375,36 +379,37 @@ fit.choquet(data.transformed_copy,output.1="choquet.txt",stats.1 = "choquet-stat
 
 ####################################### ![Choquet Integral](choquet.png "Choquet Integral")
 
-#  Interpretation and comparison
+# Interpretation and comparison
 
 -   All models except PowerMean QM show very similar predictive accuracy RMSE 0.0413) and correlation values 0.200.22 Pearson).
 
 -   WAM, OWA, and Choquet have almost the same error metrics, but Choquet shows higher orness, capturing importance of variable 5 as well, unlike others that mostly focus on variable 1
 
--    Variable 1 Living room temperature) is consistently the dominant predictor across all
-    models, with variable 3 Office room temperature) having minor influence. Choquet uniquely assigns significant importance to variable 5 Pressure), suggesting it captures interaction effects better.
+-   Variable 1 Living room temperature) is consistently the dominant predictor across all models, with variable 3 Office room temperature) having minor influence. Choquet uniquely assigns significant importance to variable 5 Pressure), suggesting it captures interaction effects better.
 
 -   The OWA model shows low orness, indicating strong bias toward minimum values, which may limit flexibility
 
 -   Choquet Integral model balances variable contributions, including pressure X5, suggesting better modeling of interaction effects without overfitting.
 
--    Power Mean HM strongly biases towards variable 1, somewhat ignoring pressure and
-    humidity variables, but correlation metrics indicate better predictive fit. It may be simpler and less flexible but not necessarily overfitting given improved correlations.
+-   Power Mean HM strongly biases towards variable 1, somewhat ignoring pressure and humidity variables, but correlation metrics indicate better predictive fit. It may be simpler and less flexible but not necessarily overfitting given improved correlations.
 
-#  Optimum Model Recommendation
+# Optimum Model Recommendation
 
--    Weighted Power Mean HM outperforms marginally in all error and correlation metrics, indicating better fit on the data
+-   Weighted Power Mean HM outperforms marginally in all error and correlation metrics, indicating better fit on the data
 
--    Choquet Integral provides richer interpretability with balanced importance between
-    temperature and pressure, reflecting nuanced interactions
+-   Choquet Integral provides richer interpretability with balanced importance between temperature and pressure, reflecting nuanced interactions
 
--    For purely predictive performance and simplicity, Weighted Power Mean HM is optimal
+-   For purely predictive performance and simplicity, Weighted Power Mean HM is optimal
 
 -   For interpretability and capturing interaction effects, Choquet Integral is preferable.
 
 Overall, the Weighted Power Mean HM should be the first choice focusing on prediction accuracy, while Choquet Integral suits those valuing variable interaction understanding alongside good accuracy
 
-# Use Model for Prediction
+# Use Model for Prediction on test data
+
+-   Test data frame is prepared
+
+-   Po
 
 ```{r imort new data}
 # Your data
@@ -445,6 +450,6 @@ result=PM(new_input_to_transform,weights_QM,-1)
 ```{r reverse transform Y to original scale}
 result_scaled=result^(1/res_swY$n_opt)
 result_scaled
-# Reverse min-max scaling for Y
+
 
 ```
